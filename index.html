@@ -1,0 +1,2027 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>מחולל מסמכים אינטראקטיבי</title>
+<style>
+/* ===== CSS Variables / Color Palette ===== */
+:root {
+  --color-topbar-bg: #1e293b;
+  --color-topbar-text: #f1f5f9;
+  --color-panel-bg: #ffffff;
+  --color-preview-bg: #f8fafc;
+  --color-border: #e2e8f0;
+  --color-primary: #3b82f6;
+  --color-primary-hover: #2563eb;
+  --color-secondary: #64748b;
+  --color-danger: #ef4444;
+  --color-success: #22c55e;
+  --color-warning: #f59e0b;
+  --color-text: #1e293b;
+  --color-text-muted: #64748b;
+  --color-input-bg: #f8fafc;
+  --color-input-border: #cbd5e1;
+  --color-modal-overlay: rgba(0,0,0,0.5);
+  --color-shadow: rgba(0,0,0,0.1);
+  --font-family: system-ui, 'Segoe UI', Arial, sans-serif;
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+}
+
+/* ===== Reset ===== */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: var(--font-family); color: var(--color-text); background: var(--color-preview-bg); height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
+button { cursor: pointer; font-family: var(--font-family); }
+input, select, textarea { font-family: var(--font-family); }
+a { color: var(--color-primary); }
+
+/* ===== Top Bar ===== */
+#topbar {
+  background: var(--color-topbar-bg);
+  color: var(--color-topbar-text);
+  height: 56px;
+  display: flex;
+  align-items: center;
+  padding: 0 20px;
+  gap: 12px;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px var(--color-shadow);
+  z-index: 100;
+}
+#topbar .logo {
+  font-size: 22px;
+  line-height: 1;
+}
+#topbar .title {
+  font-size: 16px;
+  font-weight: 700;
+  flex: 1;
+  letter-spacing: 0.01em;
+}
+#topbar .topbar-actions {
+  display: flex;
+  gap: 8px;
+}
+.topbar-btn {
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.2);
+  color: var(--color-topbar-text);
+  border-radius: var(--radius-md);
+  padding: 6px 14px;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: background 0.2s;
+}
+.topbar-btn:hover { background: rgba(255,255,255,0.2); }
+
+/* ===== Main Layout ===== */
+#main {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* ===== Left Panel ===== */
+#left-panel {
+  width: 30%;
+  min-width: 280px;
+  max-width: 400px;
+  background: var(--color-panel-bg);
+  border-left: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  flex-shrink: 0;
+}
+.panel-section {
+  padding: 16px;
+  border-bottom: 1px solid var(--color-border);
+}
+.panel-section:last-child { border-bottom: none; }
+.section-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 12px;
+}
+
+/* ===== Upload Zone ===== */
+#upload-zone {
+  border: 2px dashed var(--color-input-border);
+  border-radius: var(--radius-lg);
+  padding: 28px 16px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+  background: var(--color-input-bg);
+  position: relative;
+}
+#upload-zone:hover, #upload-zone.drag-over {
+  border-color: var(--color-primary);
+  background: #eff6ff;
+}
+#upload-zone .upload-icon { font-size: 32px; margin-bottom: 8px; }
+#upload-zone .upload-text { font-size: 14px; color: var(--color-text-muted); }
+#upload-zone .upload-hint { font-size: 12px; color: var(--color-text-muted); margin-top: 4px; }
+#file-input { display: none; }
+#file-info {
+  display: none;
+  background: #f0fdf4;
+  border: 1px solid #86efac;
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+  margin-top: 10px;
+  font-size: 13px;
+}
+#file-info .file-name { font-weight: 600; color: #166534; }
+#file-info .file-meta { color: #15803d; margin-top: 2px; }
+
+/* ===== Text Area ===== */
+#raw-text-area {
+  width: 100%;
+  min-height: 100px;
+  border: 1px solid var(--color-input-border);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+  font-size: 13px;
+  resize: vertical;
+  background: var(--color-input-bg);
+  color: var(--color-text);
+  transition: border-color 0.2s;
+  direction: auto;
+}
+#raw-text-area:focus { outline: none; border-color: var(--color-primary); }
+#text-stats { font-size: 12px; color: var(--color-text-muted); margin-top: 6px; }
+
+/* ===== Form Controls ===== */
+.form-group { margin-bottom: 14px; }
+.form-group:last-child { margin-bottom: 0; }
+.form-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text);
+  margin-bottom: 6px;
+}
+.form-select, .form-input {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--color-input-border);
+  border-radius: var(--radius-md);
+  background: var(--color-input-bg);
+  color: var(--color-text);
+  font-size: 13px;
+  transition: border-color 0.2s;
+}
+.form-select:focus, .form-input:focus { outline: none; border-color: var(--color-primary); }
+
+/* Direction toggle */
+.direction-toggle {
+  display: flex;
+  border: 1px solid var(--color-input-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+.direction-toggle button {
+  flex: 1;
+  padding: 7px 6px;
+  border: none;
+  background: var(--color-input-bg);
+  color: var(--color-text-muted);
+  font-size: 12px;
+  transition: background 0.2s, color 0.2s;
+}
+.direction-toggle button.active {
+  background: var(--color-primary);
+  color: #fff;
+  font-weight: 600;
+}
+
+/* Slider */
+.form-slider { width: 100%; accent-color: var(--color-primary); }
+.slider-row { display: flex; align-items: center; gap: 10px; }
+.slider-val {
+  min-width: 28px;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-primary);
+}
+
+/* Color palette picker */
+.palette-grid {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.palette-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 3px solid transparent;
+  cursor: pointer;
+  transition: border-color 0.2s, transform 0.15s;
+  position: relative;
+}
+.palette-btn:hover { transform: scale(1.1); }
+.palette-btn.selected { border-color: var(--color-text); }
+.palette-btn[title]::after {
+  content: attr(title);
+  position: absolute;
+  bottom: -22px;
+  right: 50%;
+  transform: translateX(50%);
+  white-space: nowrap;
+  font-size: 10px;
+  background: #1e293b;
+  color: #fff;
+  padding: 2px 6px;
+  border-radius: 4px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.palette-btn:hover::after { opacity: 1; }
+
+/* CTA Buttons */
+.btn-primary {
+  width: 100%;
+  padding: 11px 16px;
+  background: var(--color-primary);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: 15px;
+  font-weight: 700;
+  transition: background 0.2s, transform 0.1s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.btn-primary:hover { background: var(--color-primary-hover); }
+.btn-primary:active { transform: scale(0.98); }
+.btn-primary:disabled { background: #93c5fd; cursor: not-allowed; }
+
+.btn-secondary {
+  width: 100%;
+  padding: 9px 16px;
+  background: transparent;
+  color: var(--color-primary);
+  border: 1.5px solid var(--color-primary);
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  font-weight: 600;
+  transition: background 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+.btn-secondary:hover { background: #eff6ff; }
+.btn-secondary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.btn-sm {
+  padding: 5px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid var(--color-input-border);
+  background: var(--color-input-bg);
+  color: var(--color-text);
+  transition: background 0.2s;
+}
+.btn-sm:hover { background: #e2e8f0; }
+.btn-danger { border-color: var(--color-danger); color: var(--color-danger); }
+.btn-danger:hover { background: #fef2f2; }
+
+/* ===== Right Panel / Preview ===== */
+#right-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--color-preview-bg);
+}
+#preview-toolbar {
+  display: flex;
+  align-items: center;
+  padding: 8px 16px;
+  background: var(--color-panel-bg);
+  border-bottom: 1px solid var(--color-border);
+  gap: 8px;
+  flex-shrink: 0;
+}
+#preview-toolbar .toolbar-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  flex: 1;
+}
+.preview-size-btn {
+  padding: 5px 10px;
+  border: 1px solid var(--color-input-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-input-bg);
+  color: var(--color-text-muted);
+  font-size: 13px;
+  transition: all 0.2s;
+}
+.preview-size-btn.active {
+  background: var(--color-primary);
+  color: #fff;
+  border-color: var(--color-primary);
+}
+#preview-container {
+  flex: 1;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  overflow: auto;
+  padding: 16px;
+}
+#preview-frame {
+  background: #fff;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 4px 24px var(--color-shadow);
+  width: 100%;
+  height: 100%;
+  min-height: 400px;
+  transition: width 0.3s;
+}
+#preview-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  width: 100%;
+  color: var(--color-text-muted);
+  text-align: center;
+  gap: 12px;
+}
+#preview-placeholder .ph-icon { font-size: 56px; opacity: 0.3; }
+#preview-placeholder .ph-text { font-size: 16px; font-weight: 600; opacity: 0.5; }
+#preview-placeholder .ph-sub { font-size: 13px; opacity: 0.4; }
+
+/* ===== Warning Banner ===== */
+#warning-banner {
+  display: none;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: var(--radius-md);
+  padding: 8px 12px;
+  font-size: 13px;
+  color: #92400e;
+  margin: 8px 16px;
+}
+
+/* ===== Progress ===== */
+#progress-bar-container {
+  display: none;
+  padding: 0 16px 8px;
+}
+#progress-bar-bg {
+  background: #e2e8f0;
+  border-radius: 99px;
+  height: 6px;
+  overflow: hidden;
+}
+#progress-bar {
+  height: 100%;
+  background: var(--color-primary);
+  border-radius: 99px;
+  width: 0%;
+  transition: width 0.3s;
+}
+#progress-text { font-size: 12px; color: var(--color-text-muted); margin-top: 4px; }
+
+/* ===== Modal ===== */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: var(--color-modal-overlay);
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+}
+.modal-overlay.open { display: flex; }
+.modal {
+  background: var(--color-panel-bg);
+  border-radius: var(--radius-xl);
+  width: min(560px, 95vw);
+  max-height: 85vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+}
+.modal-header {
+  display: flex;
+  align-items: center;
+  padding: 18px 20px;
+  border-bottom: 1px solid var(--color-border);
+  gap: 10px;
+}
+.modal-header h2 { font-size: 17px; font-weight: 700; flex: 1; }
+.modal-close {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  background: #f1f5f9;
+  color: var(--color-text-muted);
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+}
+.modal-close:hover { background: #e2e8f0; }
+.modal-body { padding: 20px; overflow-y: auto; flex: 1; }
+.modal-footer {
+  padding: 14px 20px;
+  border-top: 1px solid var(--color-border);
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+/* Tabs */
+.tabs { display: flex; border-bottom: 2px solid var(--color-border); margin-bottom: 16px; }
+.tab-btn {
+  padding: 8px 18px;
+  border: none;
+  background: none;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  transition: color 0.2s, border-color 0.2s;
+}
+.tab-btn.active { color: var(--color-primary); border-bottom-color: var(--color-primary); }
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+
+/* Metrics table */
+.metrics-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.metrics-table th, .metrics-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--color-border);
+  text-align: right;
+}
+.metrics-table th { font-weight: 700; color: var(--color-text-muted); background: #f8fafc; cursor: pointer; user-select: none; }
+.metrics-table th:hover { background: #f1f5f9; }
+.metrics-row-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.metric-card {
+  background: #f8fafc;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 12px;
+}
+.metric-card .metric-label { font-size: 11px; color: var(--color-text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+.metric-card .metric-value { font-size: 20px; font-weight: 700; color: var(--color-primary); margin-top: 4px; }
+
+/* Spinner */
+.spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(255,255,255,0.4);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  display: inline-block;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Connection test result */
+#conn-result { margin-top: 10px; font-size: 13px; font-weight: 600; }
+
+/* Input with eye toggle */
+.input-with-toggle { position: relative; }
+.input-with-toggle .form-input { padding-left: 36px; }
+.toggle-eye {
+  position: absolute;
+  left: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  border: none;
+  background: none;
+  color: var(--color-text-muted);
+  font-size: 16px;
+  cursor: pointer;
+  padding: 2px;
+}
+
+/* Empty state */
+.empty-state {
+  text-align: center;
+  padding: 32px 16px;
+  color: var(--color-text-muted);
+}
+.empty-state .es-icon { font-size: 36px; opacity: 0.3; margin-bottom: 8px; }
+.empty-state .es-text { font-size: 14px; }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+/* Utility */
+.flex { display: flex; }
+.items-center { align-items: center; }
+.gap-2 { gap: 8px; }
+.gap-1 { gap: 4px; }
+.mt-1 { margin-top: 4px; }
+.mt-2 { margin-top: 8px; }
+.hidden { display: none !important; }
+.text-sm { font-size: 13px; }
+.text-xs { font-size: 11px; }
+.font-bold { font-weight: 700; }
+.text-muted { color: var(--color-text-muted); }
+.text-success { color: var(--color-success); }
+.text-danger { color: var(--color-danger); }
+.text-warning { color: var(--color-warning); }
+.w-full { width: 100%; }
+.truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+</style>
+</head>
+<body>
+
+<!-- ===== TOP BAR ===== -->
+<div id="topbar" role="banner">
+  <span class="logo" aria-hidden="true">📄</span>
+  <span class="title">מחולל מסמכים אינטראקטיבי</span>
+  <div class="topbar-actions">
+    <button class="topbar-btn" id="btn-metrics" aria-label="פתח לוח מדדי ביצועים">
+      📊 <span>מדדים</span>
+    </button>
+    <button class="topbar-btn" id="btn-settings" aria-label="פתח הגדרות">
+      ⚙️ <span>הגדרות</span>
+    </button>
+  </div>
+</div>
+
+<!-- ===== MAIN ===== -->
+<div id="main">
+
+  <!-- ===== LEFT PANEL ===== -->
+  <div id="left-panel" role="complementary" aria-label="אזור בקרה">
+
+    <!-- Upload -->
+    <div class="panel-section">
+      <div class="section-title">העלאת קובץ</div>
+      <div id="upload-zone" role="button" tabindex="0" aria-label="גרור קובץ לכאן או לחץ להעלאה">
+        <div class="upload-icon">📂</div>
+        <div class="upload-text">גרור קובץ לכאן</div>
+        <div class="upload-hint">.txt, .doc, .docx — או לחץ לבחירה</div>
+        <input type="file" id="file-input" accept=".txt,.doc,.docx" aria-label="בחר קובץ">
+      </div>
+      <div id="file-info" role="status" aria-live="polite"></div>
+      <div class="flex gap-2 mt-2" style="justify-content:flex-end">
+        <button class="btn-sm btn-danger hidden" id="btn-clear-file" aria-label="נקה קובץ">✕ נקה</button>
+      </div>
+    </div>
+
+    <!-- Raw text -->
+    <div class="panel-section">
+      <div class="section-title">או הדבק טקסט</div>
+      <textarea id="raw-text-area" placeholder="הדבק כאן את תוכן המסמך..." rows="5" aria-label="הדבק טקסט גולמי"></textarea>
+      <div id="text-stats" aria-live="polite"></div>
+    </div>
+
+    <!-- Controls -->
+    <div class="panel-section">
+      <div class="section-title">הגדרות יצירה</div>
+
+      <div class="form-group">
+        <label class="form-label">כיוון טקסט פלט</label>
+        <div class="direction-toggle" role="group" aria-label="כיוון טקסט">
+          <button class="active" data-dir="auto" aria-pressed="true">🔁 אוטומטי</button>
+          <button data-dir="rtl" aria-pressed="false">→ ימין לשמאל</button>
+          <button data-dir="ltr" aria-pressed="false">← שמאל לימין</button>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="output-style">סגנון פלט</label>
+        <select class="form-select" id="output-style" aria-label="בחר סגנון פלט">
+          <option value="infographic">אינפוגרפיקה סיכומית</option>
+          <option value="research">דוח מחקר</option>
+          <option value="executive">תקציר מנהלים</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">עומק חלוקה (<span id="depth-val">5</span> חלקים)</label>
+        <div class="slider-row">
+          <span class="text-xs text-muted">3</span>
+          <input type="range" class="form-slider" id="section-depth" min="3" max="8" value="5" aria-label="עומק חלוקה לחלקים">
+          <span class="text-xs text-muted">8</span>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">פלטת צבעים</label>
+        <div class="palette-grid" role="radiogroup" aria-label="בחר פלטת צבעים" id="palette-grid">
+          <button class="palette-btn selected" data-palette="tech-blue" title="כחול טכנולוגי"
+            style="background: linear-gradient(135deg,#3b82f6,#1d4ed8)" aria-label="כחול טכנולוגי" role="radio" aria-checked="true"></button>
+          <button class="palette-btn" data-palette="forest-green" title="ירוק יער"
+            style="background: linear-gradient(135deg,#22c55e,#15803d)" aria-label="ירוק יער" role="radio" aria-checked="false"></button>
+          <button class="palette-btn" data-palette="warm-amber" title="ענבר חם"
+            style="background: linear-gradient(135deg,#f59e0b,#b45309)" aria-label="ענבר חם" role="radio" aria-checked="false"></button>
+          <button class="palette-btn" data-palette="deep-purple" title="סגול עמוק"
+            style="background: linear-gradient(135deg,#8b5cf6,#6d28d9)" aria-label="סגול עמוק" role="radio" aria-checked="false"></button>
+          <button class="palette-btn" data-palette="monochrome" title="מונוכרום"
+            style="background: linear-gradient(135deg,#64748b,#1e293b)" aria-label="מונוכרום" role="radio" aria-checked="false"></button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="panel-section">
+      <div id="warning-banner" role="alert"></div>
+      <div id="progress-bar-container">
+        <div id="progress-bar-bg"><div id="progress-bar"></div></div>
+        <div id="progress-text"></div>
+      </div>
+      <button class="btn-primary" id="btn-generate" aria-label="צור מסמך אינטראקטיבי">
+        ✨ צור מסמך
+      </button>
+      <button class="btn-secondary" id="btn-export" disabled aria-label="ייצא כקובץ HTML">
+        💾 ייצא HTML
+      </button>
+    </div>
+
+  </div>
+
+  <!-- ===== RIGHT PANEL / PREVIEW ===== -->
+  <div id="right-panel" role="main">
+    <div id="preview-toolbar">
+      <span class="toolbar-label">תצוגה מקדימה</span>
+      <button class="preview-size-btn active" data-size="desktop" aria-label="תצוגת שולחן עבודה">🖥 מחשב</button>
+      <button class="preview-size-btn" data-size="tablet" aria-label="תצוגת טאבלט">📱 טאבלט</button>
+      <button class="preview-size-btn" data-size="mobile" aria-label="תצוגת נייד">📲 נייד</button>
+    </div>
+    <div id="preview-container">
+      <div id="preview-placeholder">
+        <div class="ph-icon">📄</div>
+        <div class="ph-text">העלה מסמך ולחץ "צור מסמך"</div>
+        <div class="ph-sub">התצוגה המקדימה תופיע כאן</div>
+      </div>
+      <iframe id="preview-frame" class="hidden"
+        sandbox="allow-scripts allow-same-origin"
+        title="תצוגה מקדימה של המסמך שנוצר"
+        aria-label="תצוגה מקדימה"></iframe>
+    </div>
+  </div>
+
+</div>
+
+<!-- ===== SETTINGS MODAL ===== -->
+<div class="modal-overlay" id="settings-modal" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+  <div class="modal">
+    <div class="modal-header">
+      <span style="font-size:20px">⚙️</span>
+      <h2 id="settings-title">הגדרות API</h2>
+      <button class="modal-close" id="settings-close" aria-label="סגור הגדרות">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label" for="s-api-url">כתובת API</label>
+        <input type="url" class="form-input" id="s-api-url" placeholder="https://api.anthropic.com" aria-label="כתובת API">
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="s-api-key">מפתח API</label>
+        <div class="input-with-toggle">
+          <input type="password" class="form-input" id="s-api-key" placeholder="sk-..." autocomplete="off" aria-label="מפתח API">
+          <button class="toggle-eye" id="toggle-key-vis" aria-label="הצג/הסתר מפתח">👁</button>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="s-model">שם מודל</label>
+        <input type="text" class="form-input" id="s-model" placeholder="claude-3-5-sonnet-20241022" aria-label="שם מודל">
+      </div>
+      <div class="form-group">
+        <label class="form-label">מקסימום טוקנים (<span id="s-tokens-val">4000</span>)</label>
+        <div class="slider-row">
+          <span class="text-xs text-muted">1000</span>
+          <input type="range" class="form-slider" id="s-max-tokens" min="1000" max="16000" step="500" value="4000" aria-label="מקסימום טוקנים">
+          <span class="text-xs text-muted">16000</span>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">טמפרטורה (<span id="s-temp-val">0.7</span>)</label>
+        <div class="slider-row">
+          <span class="text-xs text-muted">0.0</span>
+          <input type="range" class="form-slider" id="s-temperature" min="0" max="1" step="0.05" value="0.7" aria-label="טמפרטורה">
+          <span class="text-xs text-muted">1.0</span>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="s-timeout">זמן קצוב (שניות)</label>
+        <select class="form-select" id="s-timeout" aria-label="זמן קצוב">
+          <option value="30">30 שניות</option>
+          <option value="60" selected>60 שניות</option>
+          <option value="120">120 שניות</option>
+          <option value="300">300 שניות</option>
+        </select>
+      </div>
+      <button class="btn-secondary" id="btn-test-conn" aria-label="בדוק חיבור לשרת API" style="width:auto;padding:7px 18px">
+        🔌 בדוק חיבור
+      </button>
+      <div id="conn-result" role="status" aria-live="polite"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-sm" id="settings-cancel" aria-label="ביטול">ביטול</button>
+      <button class="btn-primary" id="settings-save" style="width:auto;padding:9px 24px" aria-label="שמור הגדרות">💾 שמור</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== METRICS MODAL ===== -->
+<div class="modal-overlay" id="metrics-modal" role="dialog" aria-modal="true" aria-labelledby="metrics-title">
+  <div class="modal" style="width:min(680px,95vw)">
+    <div class="modal-header">
+      <span style="font-size:20px">📊</span>
+      <h2 id="metrics-title">מדדי ביצועים</h2>
+      <button class="modal-close" id="metrics-close" aria-label="סגור מדדים">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="tabs" role="tablist">
+        <button class="tab-btn active" role="tab" aria-selected="true" data-tab="current">הריצה הנוכחית</button>
+        <button class="tab-btn" role="tab" aria-selected="false" data-tab="history">היסטוריה (10 אחרונות)</button>
+      </div>
+      <div class="tab-panel active" id="tab-current">
+        <div id="metrics-current-content">
+          <div class="empty-state">
+            <div class="es-icon">📊</div>
+            <div class="es-text">אין נתונים עדיין — צור מסמך כדי לראות מדדים</div>
+          </div>
+        </div>
+      </div>
+      <div class="tab-panel" id="tab-history">
+        <div id="metrics-history-content">
+          <div class="empty-state">
+            <div class="es-icon">🕐</div>
+            <div class="es-text">אין היסטוריה עדיין</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-sm btn-danger" id="btn-clear-history" aria-label="נקה היסטוריה">🗑 נקה היסטוריה</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ===================================================================
+   CHART.JS STUB — replaced by real library when network available
+   =================================================================== */
+(function() {
+  if (typeof Chart !== 'undefined') return;
+  window.Chart = function(ctx, config) {
+    this.ctx = ctx;
+    this.config = config;
+    this.data = config.data;
+    try {
+      const canvas = ctx.canvas || ctx;
+      const context = canvas.getContext ? canvas.getContext('2d') : null;
+      if (!context) return;
+      const { labels = [], datasets = [] } = config.data || {};
+      const type = config.type || 'bar';
+      const w = canvas.width || 400, h = canvas.height || 200;
+      context.clearRect(0, 0, w, h);
+      // Draw a minimal chart representation
+      const colors = ['#3b82f6','#22c55e','#f59e0b','#ef4444','#8b5cf6'];
+      const maxVal = Math.max(...datasets.flatMap(d => d.data || [1]), 1);
+      const barW = Math.floor((w - 40) / Math.max(labels.length, 1));
+      context.fillStyle = '#f8fafc';
+      context.fillRect(0, 0, w, h);
+      context.font = '11px system-ui';
+      context.fillStyle = '#64748b';
+      context.textAlign = 'center';
+      labels.forEach((lbl, i) => {
+        const x = 20 + i * barW + barW / 2;
+        const val = (datasets[0]?.data?.[i] || 0);
+        const barH = Math.round((val / maxVal) * (h - 40));
+        const y = h - 20 - barH;
+        context.fillStyle = colors[i % colors.length];
+        if (type === 'bar' || type === 'bar') {
+          context.fillRect(x - barW * 0.35, y, barW * 0.7, barH);
+        }
+        context.fillStyle = '#64748b';
+        context.fillText(String(lbl).substring(0, 8), x, h - 4);
+      });
+    } catch(e) {}
+    this.destroy = function() {};
+    this.update = function() {};
+  };
+  Chart.register = function() {};
+  Chart.defaults = { font: {}, color: '#666' };
+})();
+
+/* ===================================================================
+   MAMMOTH.JS STUB — replaced by real library when available
+   =================================================================== */
+(function() {
+  if (typeof mammoth !== 'undefined') return;
+  window.mammoth = {
+    convertToHtml: function(input) {
+      return Promise.resolve({
+        value: '<p>[mammoth.js לא זמין — לא ניתן לפרסר קובץ DOCX. אנא הדבד טקסט ישירות.]</p>',
+        messages: ['mammoth not available']
+      });
+    },
+    extractRawText: function(input) {
+      return Promise.resolve({
+        value: '',
+        messages: ['mammoth not available']
+      });
+    }
+  };
+})();
+
+/* ===================================================================
+   UI_STRINGS — All Hebrew UI text
+   =================================================================== */
+const UI_STRINGS = {
+  appTitle: 'מחולל מסמכים אינטראקטיבי',
+  generating: 'מייצר מסמך...',
+  generatingStep1: 'מנתח מסמך...',
+  generatingStep2: 'שולח לעיבוד AI...',
+  generatingStep3: 'מרכיב תצוגה...',
+  generatingDone: 'המסמך נוצר בהצלחה!',
+  errorNoContent: 'נא להעלות קובץ או להדביק טקסט.',
+  errorAPI: 'שגיאה בתקשורת עם ה-API.',
+  errorTimeout: 'הבקשה נכשלה — חרגת מזמן הקצוב.',
+  errorNoAPI: 'לא הוגדר API — פועל במצב לא מקוון.',
+  offlineWarning: '⚠️ פועל במצב לא מקוון — איכות הפלט מוגבלת ללא מודל שפה.',
+  truncatedWarning: '⚠️ הטקסט קוצץ כדי להתאים לחלון ההקשר של המודל.',
+  docWarning: '⚠️ קבצי .doc אינם נתמכים ישירות. המר ל-.docx או הדבק את הטקסט.',
+  connSuccess: '✅ החיבור הצליח!',
+  connFail: '❌ החיבור נכשל: ',
+  connTesting: '⏳ בודק חיבור...',
+  settingsSaved: '✅ ההגדרות נשמרו',
+  exportFilename: (title, ts) => `${title}-interactive-summary-${ts}.html`,
+  noHistory: 'אין היסטוריה עדיין',
+  noCurrent: 'אין נתונים עדיין — צור מסמך כדי לראות מדדים',
+  metricsLabels: {
+    tokensIn: 'טוקנים נכנסים',
+    tokensOut: 'טוקנים יוצאים',
+    totalTokens: 'סה"כ טוקנים',
+    promptChars: 'תווי הנחיה',
+    ttft: 'TTFT (ms)',
+    latency: 'זמן כולל (ms)',
+    tokensPerSec: 'טוקנים/שנייה',
+    model: 'מודל',
+    endpoint: 'נקודת קצה',
+    timestamp: 'חותמת זמן',
+    wordCount: 'מילים',
+    charCount: 'תווים',
+    estPages: 'עמודים משוערים',
+    sectionCount: 'חלקים',
+    chartCount: 'גרפים',
+    cardCount: 'כרטיסיות',
+  }
+};
+
+/* ===================================================================
+   SettingsManager
+   =================================================================== */
+const SettingsManager = (() => {
+  const KEY = 'idg_settings';
+  const KEY_SECRET = 'idg_apikey';
+  const defaults = {
+    apiUrl: '',
+    model: 'claude-3-5-sonnet-20241022',
+    maxTokens: 4000,
+    temperature: 0.7,
+    timeout: 60,
+  };
+
+  function load() {
+    try {
+      const raw = sessionStorage.getItem(KEY);
+      const s = raw ? JSON.parse(raw) : {};
+      const key = sessionStorage.getItem(KEY_SECRET) || '';
+      return { ...defaults, ...s, apiKey: key };
+    } catch(e) { return { ...defaults, apiKey: '' }; }
+  }
+
+  function save(settings) {
+    const { apiKey, ...rest } = settings;
+    sessionStorage.setItem(KEY, JSON.stringify(rest));
+    if (apiKey !== undefined) sessionStorage.setItem(KEY_SECRET, apiKey);
+  }
+
+  function isConfigured() {
+    const s = load();
+    return !!(s.apiUrl && s.apiKey && s.model);
+  }
+
+  return { load, save, isConfigured };
+})();
+
+/* ===================================================================
+   MetricsCollector
+   =================================================================== */
+const MetricsCollector = (() => {
+  let current = null;
+  let history = [];
+  const MAX_HISTORY = 10;
+
+  function record(data) {
+    current = { ...data, timestamp: new Date().toISOString() };
+    history.unshift(current);
+    if (history.length > MAX_HISTORY) history = history.slice(0, MAX_HISTORY);
+  }
+
+  function getCurrent() { return current; }
+  function getHistory() { return [...history]; }
+  function clearHistory() { history = []; current = null; }
+
+  return { record, getCurrent, getHistory, clearHistory };
+})();
+
+/* ===================================================================
+   FileParser
+   =================================================================== */
+const FileParser = (() => {
+  function parseText(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = e => resolve(e.target.result);
+      reader.onerror = () => reject(new Error('שגיאה בקריאת הקובץ'));
+      reader.readAsText(file, 'UTF-8');
+    });
+  }
+
+  async function parseDocx(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        try {
+          const result = await mammoth.extractRawText({ arrayBuffer: e.target.result });
+          resolve(result.value || '');
+        } catch(err) {
+          reject(err);
+        }
+      };
+      reader.onerror = () => reject(new Error('שגיאה בקריאת הקובץ'));
+      reader.readAsArrayBuffer(file);
+    });
+  }
+
+  async function parse(file) {
+    const name = file.name.toLowerCase();
+    if (name.endsWith('.txt') || name.endsWith('.md')) {
+      return { text: await parseText(file), warning: null };
+    } else if (name.endsWith('.docx')) {
+      return { text: await parseDocx(file), warning: null };
+    } else if (name.endsWith('.doc')) {
+      return { text: '', warning: UI_STRINGS.docWarning };
+    }
+    return { text: await parseText(file), warning: null };
+  }
+
+  return { parse };
+})();
+
+/* ===================================================================
+   DocumentNormalizer
+   =================================================================== */
+const DocumentNormalizer = (() => {
+  function detectLanguage(text) {
+    if (!text) return 'auto';
+    const hebrewChars = (text.match(/[֐-׿]/g) || []).length;
+    const total = text.replace(/\s/g, '').length;
+    return total > 0 && (hebrewChars / total) > 0.3 ? 'he' : 'en';
+  }
+
+  function extractSections(text) {
+    const lines = text.split('\n');
+    const sections = [];
+    let currentSection = null;
+    const headingRe = /^(#{1,6})\s+(.+)|^([A-ZА-Яא-ת][^.!?]{10,80})\s*$/;
+    lines.forEach(line => {
+      const trimmed = line.trim();
+      if (!trimmed) return;
+      const mdMatch = trimmed.match(/^(#{1,6})\s+(.+)/);
+      if (mdMatch) {
+        currentSection = { heading: mdMatch[2], level: mdMatch[1].length, body: '' };
+        sections.push(currentSection);
+      } else {
+        if (!currentSection) {
+          currentSection = { heading: '', level: 1, body: '' };
+          sections.push(currentSection);
+        }
+        currentSection.body += (currentSection.body ? '\n' : '') + trimmed;
+      }
+    });
+    return sections;
+  }
+
+  function extractTitle(text, filename) {
+    const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+    const first = lines[0] || '';
+    if (first.startsWith('#')) return first.replace(/^#+\s*/, '');
+    if (first.length < 100) return first;
+    return filename ? filename.replace(/\.[^.]+$/, '') : 'מסמך ללא כותרת';
+  }
+
+  function normalize(text, filename) {
+    const raw = (text || '').trim();
+    const words = raw.split(/\s+/).filter(Boolean);
+    return {
+      title: extractTitle(raw, filename),
+      language: detectLanguage(raw),
+      sections: extractSections(raw),
+      raw_text: raw,
+      word_count: words.length,
+      char_count: raw.length,
+    };
+  }
+
+  return { normalize, detectLanguage };
+})();
+
+/* ===================================================================
+   PromptBuilder
+   =================================================================== */
+const PromptBuilder = (() => {
+  const PALETTE_CSS = {
+    'tech-blue': { primary: '#3b82f6', secondary: '#1d4ed8', accent: '#93c5fd', bg: '#eff6ff', hero: 'linear-gradient(135deg,#1d4ed8,#3b82f6,#60a5fa)' },
+    'forest-green': { primary: '#22c55e', secondary: '#15803d', accent: '#86efac', bg: '#f0fdf4', hero: 'linear-gradient(135deg,#15803d,#22c55e,#4ade80)' },
+    'warm-amber': { primary: '#f59e0b', secondary: '#b45309', accent: '#fde68a', bg: '#fffbeb', hero: 'linear-gradient(135deg,#b45309,#f59e0b,#fbbf24)' },
+    'deep-purple': { primary: '#8b5cf6', secondary: '#6d28d9', accent: '#c4b5fd', bg: '#f5f3ff', hero: 'linear-gradient(135deg,#6d28d9,#8b5cf6,#a78bfa)' },
+    'monochrome': { primary: '#475569', secondary: '#1e293b', accent: '#94a3b8', bg: '#f8fafc', hero: 'linear-gradient(135deg,#1e293b,#475569,#94a3b8)' },
+  };
+
+  function getPaletteCSS(palette) {
+    return PALETTE_CSS[palette] || PALETTE_CSS['tech-blue'];
+  }
+
+  function truncateToTokenBudget(text, maxTokens) {
+    const budget = (maxTokens - 2000) * 4;
+    if (text.length <= budget) return { text, truncated: false };
+    // Truncate at sentence boundary
+    let truncated = text.substring(0, budget);
+    const lastPeriod = Math.max(
+      truncated.lastIndexOf('. '),
+      truncated.lastIndexOf('.\n'),
+      truncated.lastIndexOf('! '),
+      truncated.lastIndexOf('? '),
+    );
+    if (lastPeriod > budget * 0.7) truncated = truncated.substring(0, lastPeriod + 1);
+    return { text: truncated, truncated: true };
+  }
+
+  function buildSystemPrompt(direction, palette) {
+    const pal = getPaletteCSS(palette);
+    return `You are a Visual Research Analyst and expert HTML/CSS/JS developer.
+Your task is to transform documents into rich, interactive, self-contained HTML infographics.
+
+PALETTE: primary=${pal.primary}, secondary=${pal.secondary}, accent=${pal.accent}, bg=${pal.bg}
+DIRECTION: ${direction}
+HERO GRADIENT: ${pal.hero}
+
+RULES:
+1. Output ONLY the inner HTML body content — no <html>, <head>, or <body> tags.
+2. All styles must be inline or in a <style> block within your output.
+3. Do NOT use any CDN links or external resources.
+4. Include Chart.js usage via: const ctx = document.getElementById('chartX').getContext('2d'); new Chart(ctx, {...})
+   Chart.js is already loaded in the parent document and available globally.
+5. Identify 3-8 key themes and assign visual treatment per section:
+   - stat callout: large KPI number + label
+   - comparison cards: side-by-side feature comparison
+   - chart: bar/line/doughnut using Chart.js
+   - process flow: numbered steps with arrows
+   - prose: styled paragraph with pull quote
+6. Include a gradient hero header with the document title.
+7. Add KPI callout boxes for any numeric data found.
+8. Section cards should have hover effects (box-shadow, transform).
+9. If numeric/tabular data exists, include at least one Chart.js chart.
+10. If a process is described, include a visual flow chart.
+11. Text direction: all elements should use dir="${direction === 'auto' ? 'auto' : direction}".
+12. Use the palette colors consistently throughout.
+13. The output must be complete and renderable as-is inside an iframe srcdoc.
+14. Add smooth CSS transitions and professional typography.
+15. Make it look polished and professional — not a prototype.`;
+  }
+
+  function buildUserPrompt(doc, settings, direction, style, palette, depth) {
+    const { text, truncated } = truncateToTokenBudget(doc.raw_text, settings.maxTokens);
+    const styleNames = { infographic: 'אינפוגרפיקה סיכומית', research: 'דוח מחקר', executive: 'תקציר מנהלים' };
+    const paletteNames = {
+      'tech-blue': 'כחול טכנולוגי', 'forest-green': 'ירוק יער',
+      'warm-amber': 'ענבר חם', 'deep-purple': 'סגול עמוק', 'monochrome': 'מונוכרום'
+    };
+    const pal = getPaletteCSS(palette);
+
+    const prompt = `Document Title: ${doc.title}
+Document Language: ${doc.language}
+Output Direction: ${direction}
+Output Style: ${styleNames[style] || style}
+Color Palette: ${paletteNames[palette] || palette} (primary: ${pal.primary})
+Section Depth: ${depth} sections
+
+Document Content:
+${text}
+
+Instructions:
+Transform the above document into a rich, interactive HTML infographic summary.
+Output ONLY the inner HTML body content (no <html>, <head>, or <body> tags).
+
+Requirements:
+- Gradient hero header using: ${pal.hero}
+- Key KPI callout boxes for any statistics or numbers
+- ${depth} section cards with hover effects (transform: translateY(-2px), box-shadow)
+- At least one Chart.js chart if numeric data is present
+- Visual summary flowchart if a process is described
+- Direction: dir="${direction === 'auto' ? 'auto' : direction}"
+- All text in the same language as the document
+- Professional dark footer with document metadata
+- Smooth CSS animations on load`;
+
+    return { prompt, truncated };
+  }
+
+  return { buildSystemPrompt, buildUserPrompt, getPaletteCSS };
+})();
+
+/* ===================================================================
+   LLMClient
+   =================================================================== */
+const LLMClient = (() => {
+  function isAnthropicModel(model) {
+    return model.toLowerCase().startsWith('claude');
+  }
+
+  function buildAnthropicBody(settings, systemPrompt, userPrompt) {
+    return {
+      model: settings.model,
+      max_tokens: settings.maxTokens,
+      temperature: settings.temperature,
+      system: systemPrompt,
+      messages: [{ role: 'user', content: userPrompt }],
+      stream: false,
+    };
+  }
+
+  function buildOpenAIBody(settings, systemPrompt, userPrompt) {
+    return {
+      model: settings.model,
+      max_tokens: settings.maxTokens,
+      temperature: settings.temperature,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt }
+      ],
+    };
+  }
+
+  function extractContent(json, isAnthropic) {
+    if (isAnthropic) {
+      return json.content?.[0]?.text || '';
+    } else {
+      return json.choices?.[0]?.message?.content || '';
+    }
+  }
+
+  function extractUsage(json, isAnthropic) {
+    if (isAnthropic) {
+      return {
+        tokensIn: json.usage?.input_tokens || 0,
+        tokensOut: json.usage?.output_tokens || 0,
+      };
+    } else {
+      return {
+        tokensIn: json.usage?.prompt_tokens || 0,
+        tokensOut: json.usage?.completion_tokens || 0,
+      };
+    }
+  }
+
+  async function generate(settings, systemPrompt, userPrompt, onProgress) {
+    const isAnthropic = isAnthropicModel(settings.model);
+    const endpoint = isAnthropic
+      ? settings.apiUrl.replace(/\/$/, '') + '/v1/messages'
+      : settings.apiUrl.replace(/\/$/, '') + '/v1/chat/completions';
+
+    const body = isAnthropic
+      ? buildAnthropicBody(settings, systemPrompt, userPrompt)
+      : buildOpenAIBody(settings, systemPrompt, userPrompt);
+
+    const headers = {
+      'Content-Type': 'application/json',
+    };
+    if (isAnthropic) {
+      headers['x-api-key'] = settings.apiKey;
+      headers['anthropic-version'] = '2023-06-01';
+    } else {
+      headers['Authorization'] = `Bearer ${settings.apiKey}`;
+    }
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), settings.timeout * 1000);
+
+    const t0 = Date.now();
+    let ttft = null;
+
+    try {
+      if (onProgress) onProgress(10);
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(body),
+        signal: controller.signal,
+      });
+      ttft = Date.now() - t0;
+      if (onProgress) onProgress(60);
+
+      if (!response.ok) {
+        const errText = await response.text();
+        throw new Error(`HTTP ${response.status}: ${errText.substring(0, 200)}`);
+      }
+
+      const json = await response.json();
+      const totalLatency = Date.now() - t0;
+      if (onProgress) onProgress(90);
+
+      const content = extractContent(json, isAnthropic);
+      const usage = extractUsage(json, isAnthropic);
+      const tokensPerSec = usage.tokensOut > 0 && totalLatency > 0
+        ? Math.round((usage.tokensOut / totalLatency) * 1000)
+        : 0;
+
+      return {
+        content,
+        usage,
+        ttft,
+        totalLatency,
+        tokensPerSec,
+        endpoint,
+        model: settings.model,
+      };
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  }
+
+  async function testConnection(settings) {
+    const isAnthropic = isAnthropicModel(settings.model);
+    const endpoint = isAnthropic
+      ? settings.apiUrl.replace(/\/$/, '') + '/v1/messages'
+      : settings.apiUrl.replace(/\/$/, '') + '/v1/chat/completions';
+
+    const headers = { 'Content-Type': 'application/json' };
+    if (isAnthropic) {
+      headers['x-api-key'] = settings.apiKey;
+      headers['anthropic-version'] = '2023-06-01';
+    } else {
+      headers['Authorization'] = `Bearer ${settings.apiKey}`;
+    }
+
+    const body = isAnthropic
+      ? { model: settings.model, max_tokens: 10, messages: [{ role: 'user', content: 'Hi' }] }
+      : { model: settings.model, max_tokens: 10, messages: [{ role: 'user', content: 'Hi' }] };
+
+    const controller = new AbortController();
+    setTimeout(() => controller.abort(), 15000);
+
+    const resp = await fetch(endpoint, {
+      method: 'POST', headers, body: JSON.stringify(body), signal: controller.signal,
+    });
+    if (!resp.ok) {
+      const t = await resp.text();
+      throw new Error(`HTTP ${resp.status}: ${t.substring(0, 100)}`);
+    }
+    return true;
+  }
+
+  return { generate, testConnection };
+})();
+
+/* ===================================================================
+   FallbackExtractor — offline mode
+   =================================================================== */
+const FallbackExtractor = (() => {
+  const HE_STOPWORDS = new Set(['של','את','עם','הם','היה','היא','הוא','אל','על','כי','לא','גם','כל','זה','זו','מה','אם','רק','יש','אבל','כן','אחד','שלא','שהוא','שהיא','היו']);
+  const EN_STOPWORDS = new Set(['the','a','an','and','or','but','in','on','at','to','for','of','with','is','are','was','were','be','been','have','has','had','do','does','did','not','that','this','it','its','from','as','by','we','they','he','she','you','i']);
+
+  function extractTopPhrases(text, n = 5) {
+    const words = text.toLowerCase()
+      .replace(/[^a-zA-Zא-ת\s]/g, ' ')
+      .split(/\s+/)
+      .filter(w => w.length > 3 && !HE_STOPWORDS.has(w) && !EN_STOPWORDS.has(w));
+    const freq = {};
+    words.forEach(w => { freq[w] = (freq[w] || 0) + 1; });
+    return Object.entries(freq).sort((a, b) => b[1] - a[1]).slice(0, n).map(([w]) => w);
+  }
+
+  function extractNumbers(text) {
+    const nums = [];
+    const re = /(\d[\d,.]*)\s*(%|אחוז|percent|יחידות|units|₪|\$|€)?/g;
+    let m;
+    while ((m = re.exec(text)) !== null && nums.length < 6) {
+      const val = parseFloat(m[1].replace(/,/g, ''));
+      if (!isNaN(val)) nums.push({ value: val, unit: m[2] || '', context: text.substring(Math.max(0, m.index - 20), m.index + 20).trim() });
+    }
+    return nums;
+  }
+
+  function extractHeadings(text) {
+    const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+    return lines.filter(l => l.startsWith('#') || (l.length < 80 && !l.endsWith('.')));
+  }
+
+  function buildFallbackHTML(doc, palette, direction, style) {
+    const pal = PromptBuilder.getPaletteCSS(palette);
+    const phrases = extractTopPhrases(doc.raw_text);
+    const numbers = extractNumbers(doc.raw_text);
+    const headings = extractHeadings(doc.raw_text).slice(0, 6);
+    const dir = direction === 'auto' ? doc.language === 'he' ? 'rtl' : 'ltr' : direction;
+
+    const kpiCards = numbers.slice(0, 4).map(n =>
+      `<div style="background:${pal.bg};border:2px solid ${pal.accent};border-radius:12px;padding:16px 20px;text-align:center">
+        <div style="font-size:32px;font-weight:800;color:${pal.primary}">${n.value.toLocaleString()}${n.unit}</div>
+        <div style="font-size:12px;color:#64748b;margin-top:4px">${n.context.substring(0,40)}</div>
+      </div>`
+    ).join('');
+
+    const sectionCards = (headings.length > 0 ? headings : phrases).map((h, i) =>
+      `<div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:20px;transition:transform 0.2s,box-shadow 0.2s;cursor:default"
+        onmouseover="this.style.transform='translateY(-3px)';this.style.boxShadow='0 8px 24px rgba(0,0,0,0.12)'"
+        onmouseout="this.style.transform='';this.style.boxShadow=''">
+        <div style="width:36px;height:36px;border-radius:50%;background:${pal.hero};color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;margin-bottom:12px">${i+1}</div>
+        <h3 style="font-size:16px;color:${pal.secondary};margin:0 0 8px">${h.replace(/^#+\s*/,'')}</h3>
+        <p style="font-size:13px;color:#64748b;margin:0">נושא מרכזי שזוהה במסמך</p>
+      </div>`
+    ).join('');
+
+    const chartData = numbers.slice(0, 5);
+    const chartSection = chartData.length >= 2 ? `
+      <div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:24px;margin-bottom:24px">
+        <h3 style="margin:0 0 16px;color:${pal.secondary}">נתונים מספריים שזוהו</h3>
+        <canvas id="fallbackChart" height="200"></canvas>
+      </div>
+      <script>
+        (function() {
+          try {
+            var ctx = document.getElementById('fallbackChart').getContext('2d');
+            new Chart(ctx, {
+              type: 'bar',
+              data: {
+                labels: ${JSON.stringify(chartData.map(n => n.context.substring(0,15)))},
+                datasets: [{ label: 'ערכים', data: ${JSON.stringify(chartData.map(n => n.value))},
+                  backgroundColor: '${pal.accent}', borderColor: '${pal.primary}', borderWidth: 2 }]
+              },
+              options: { responsive: true, plugins: { legend: { display: false } } }
+            });
+          } catch(e) {}
+        })();
+      <\/script>` : '';
+
+    return `
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: system-ui, Arial, sans-serif; margin: 0; padding: 0; background: #f8fafc; direction: ${dir}; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  @media (max-width: 600px) { .grid2, .grid3 { grid-template-columns: 1fr; } }
+</style>
+
+<div style="background:${pal.hero};color:#fff;padding:48px 32px;text-align:center">
+  <div style="font-size:12px;opacity:0.8;margin-bottom:8px;text-transform:uppercase;letter-spacing:0.1em">מסמך אינטראקטיבי</div>
+  <h1 style="font-size:32px;font-weight:800;margin:0 0 12px">${doc.title}</h1>
+  <div style="opacity:0.85;font-size:15px">${doc.word_count.toLocaleString()} מילים · ${doc.char_count.toLocaleString()} תווים</div>
+  <div style="margin-top:12px;background:rgba(255,255,255,0.15);border-radius:8px;padding:6px 16px;display:inline-block;font-size:13px">
+    ⚠️ פועל במצב לא מקוון — איכות מוגבלת
+  </div>
+</div>
+
+<div style="max-width:900px;margin:0 auto;padding:32px 24px">
+
+  ${kpiCards ? `<h2 style="color:${pal.secondary};margin:0 0 16px">נתונים מספריים מרכזיים</h2>
+  <div class="grid2" style="margin-bottom:32px">${kpiCards}</div>` : ''}
+
+  ${chartSection}
+
+  <h2 style="color:${pal.secondary};margin:0 0 16px">נושאים מרכזיים</h2>
+  <div class="grid3" style="margin-bottom:32px">${sectionCards}</div>
+
+  ${phrases.length > 0 ? `
+  <div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:24px;margin-bottom:24px">
+    <h3 style="margin:0 0 16px;color:${pal.secondary}">מילות מפתח</h3>
+    <div style="display:flex;flex-wrap:wrap;gap:8px">
+      ${phrases.map(p => `<span style="background:${pal.bg};color:${pal.primary};border:1px solid ${pal.accent};border-radius:99px;padding:4px 14px;font-size:13px;font-weight:600">${p}</span>`).join('')}
+    </div>
+  </div>` : ''}
+
+  <div style="background:${pal.secondary};color:#fff;border-radius:12px;padding:20px;text-align:center">
+    <div style="font-size:12px;opacity:0.7">נוצר על ידי מחולל מסמכים אינטראקטיבי · מצב לא מקוון</div>
+  </div>
+</div>`;
+  }
+
+  return { buildFallbackHTML };
+})();
+
+/* ===================================================================
+   OutputRenderer
+   =================================================================== */
+const OutputRenderer = (() => {
+  // Inline Chart.js script for iframe (we share the one from parent)
+  function buildIframeDocument(bodyContent, direction) {
+    const dir = direction === 'auto' ? 'auto' : direction;
+    // Grab Chart.js source from parent window for iframe use
+    const chartScript = `<script>
+      // Chart.js stub for iframe
+      if (typeof Chart === 'undefined') {
+        window.Chart = ${Chart.toString()};
+        Chart.register = function(){};
+        Chart.defaults = { font: {}, color: '#666' };
+      }
+    <\/script>`;
+
+    return `<!DOCTYPE html>
+<html lang="${dir === 'rtl' ? 'he' : 'en'}" dir="${dir}">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: system-ui, Arial, sans-serif; }
+</style>
+${chartScript}
+</head>
+<body>
+${bodyContent}
+</body>
+</html>`;
+  }
+
+  function render(frame, placeholder, bodyContent, direction) {
+    const doc = buildIframeDocument(bodyContent, direction);
+    frame.srcdoc = doc;
+    frame.classList.remove('hidden');
+    if (placeholder) placeholder.classList.add('hidden');
+  }
+
+  function getIframeDocForExport(bodyContent, direction) {
+    return buildIframeDocument(bodyContent, direction);
+  }
+
+  return { render, getIframeDocForExport };
+})();
+
+/* ===================================================================
+   ExportEngine
+   =================================================================== */
+const ExportEngine = (() => {
+  function download(htmlContent, title) {
+    const ts = new Date().toISOString().replace(/[:.]/g, '-').substring(0, 19);
+    const safeTitle = (title || 'document').replace(/[^a-zA-Zא-ת0-9-_ ]/g, '').trim().replace(/\s+/g, '-');
+    const filename = `${safeTitle}-interactive-summary-${ts}.html`;
+    const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 1000);
+  }
+
+  return { download };
+})();
+
+/* ===================================================================
+   AppController
+   =================================================================== */
+const AppController = (() => {
+  let currentDoc = null;
+  let currentDirection = 'auto';
+  let currentPalette = 'tech-blue';
+  let lastGeneratedHTML = null;
+  let lastTitle = '';
+  let metricsHistorySortCol = null;
+  let metricsHistorySortDir = 1;
+
+  // ---- Helpers ----
+  function $(id) { return document.getElementById(id); }
+  function showEl(el) { if (typeof el === 'string') el = $(el); el && el.classList.remove('hidden'); }
+  function hideEl(el) { if (typeof el === 'string') el = $(el); el && el.classList.add('hidden'); }
+
+  function setWarning(msg) {
+    const el = $('warning-banner');
+    if (msg) { el.textContent = msg; el.style.display = 'block'; }
+    else { el.style.display = 'none'; }
+  }
+
+  function setProgress(pct, msg) {
+    const container = $('progress-bar-container');
+    const bar = $('progress-bar');
+    const text = $('progress-text');
+    if (pct === null) { container.style.display = 'none'; return; }
+    container.style.display = 'block';
+    bar.style.width = pct + '%';
+    text.textContent = msg || '';
+  }
+
+  function formatFileSize(bytes) {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / 1048576).toFixed(1) + ' MB';
+  }
+
+  function updateTextStats(text) {
+    const words = text.trim().split(/\s+/).filter(Boolean).length;
+    const chars = text.length;
+    $('text-stats').textContent = words > 0 ? `${words.toLocaleString()} מילים · ${chars.toLocaleString()} תווים` : '';
+  }
+
+  // ---- File Upload ----
+  function setupUpload() {
+    const zone = $('upload-zone');
+    const input = $('file-input');
+
+    zone.addEventListener('click', () => input.click());
+    zone.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') input.click(); });
+
+    zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
+    zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+    zone.addEventListener('drop', e => {
+      e.preventDefault();
+      zone.classList.remove('drag-over');
+      const file = e.dataTransfer.files[0];
+      if (file) handleFile(file);
+    });
+
+    input.addEventListener('change', () => {
+      if (input.files[0]) handleFile(input.files[0]);
+    });
+
+    $('btn-clear-file').addEventListener('click', clearFile);
+  }
+
+  async function handleFile(file) {
+    setWarning(null);
+    setProgress(10, 'קורא קובץ...');
+    try {
+      const { text, warning } = await FileParser.parse(file);
+      if (warning) { setWarning(warning); setProgress(null); return; }
+
+      currentDoc = DocumentNormalizer.normalize(text, file.name);
+      $('raw-text-area').value = text;
+      updateTextStats(text);
+
+      const infoEl = $('file-info');
+      infoEl.style.display = 'block';
+      infoEl.innerHTML = `<div class="file-name">📎 ${file.name}</div>
+        <div class="file-meta">${formatFileSize(file.size)} · ${currentDoc.word_count.toLocaleString()} מילים · ${currentDoc.char_count.toLocaleString()} תווים</div>`;
+      showEl('btn-clear-file');
+      setProgress(null);
+    } catch(e) {
+      setWarning('❌ שגיאה בקריאת הקובץ: ' + e.message);
+      setProgress(null);
+    }
+  }
+
+  function clearFile() {
+    currentDoc = null;
+    $('file-input').value = '';
+    $('file-info').style.display = 'none';
+    $('raw-text-area').value = '';
+    $('text-stats').textContent = '';
+    hideEl('btn-clear-file');
+    setWarning(null);
+  }
+
+  // ---- Text area ----
+  function setupTextArea() {
+    $('raw-text-area').addEventListener('input', function() {
+      updateTextStats(this.value);
+      if (this.value.trim()) {
+        currentDoc = DocumentNormalizer.normalize(this.value.trim(), 'paste');
+      }
+    });
+  }
+
+  // ---- Direction toggle ----
+  function setupDirectionToggle() {
+    document.querySelectorAll('.direction-toggle button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.direction-toggle button').forEach(b => {
+          b.classList.remove('active');
+          b.setAttribute('aria-pressed', 'false');
+        });
+        btn.classList.add('active');
+        btn.setAttribute('aria-pressed', 'true');
+        currentDirection = btn.dataset.dir;
+      });
+    });
+  }
+
+  // ---- Depth slider ----
+  function setupDepthSlider() {
+    const slider = $('section-depth');
+    const val = $('depth-val');
+    slider.addEventListener('input', () => { val.textContent = slider.value; });
+  }
+
+  // ---- Palette picker ----
+  function setupPalettePicker() {
+    $('palette-grid').querySelectorAll('.palette-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        $('palette-grid').querySelectorAll('.palette-btn').forEach(b => {
+          b.classList.remove('selected');
+          b.setAttribute('aria-checked', 'false');
+        });
+        btn.classList.add('selected');
+        btn.setAttribute('aria-checked', 'true');
+        currentPalette = btn.dataset.palette;
+      });
+    });
+  }
+
+  // ---- Preview size ----
+  function setupPreviewSize() {
+    const frame = $('preview-frame');
+    document.querySelectorAll('.preview-size-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.preview-size-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        const size = btn.dataset.size;
+        if (size === 'desktop') frame.style.maxWidth = '100%';
+        else if (size === 'tablet') frame.style.maxWidth = '768px';
+        else if (size === 'mobile') frame.style.maxWidth = '375px';
+      });
+    });
+  }
+
+  // ---- Generate ----
+  async function generate() {
+    const rawText = $('raw-text-area').value.trim();
+    if (!currentDoc && !rawText) {
+      setWarning(UI_STRINGS.errorNoContent);
+      return;
+    }
+    if (!currentDoc && rawText) {
+      currentDoc = DocumentNormalizer.normalize(rawText, 'paste');
+    }
+
+    const depth = parseInt($('section-depth').value);
+    const style = $('output-style').value;
+    const settings = SettingsManager.load();
+
+    $('btn-generate').disabled = true;
+    $('btn-generate').innerHTML = '<span class="spinner"></span> מייצר...';
+    $('btn-export').disabled = true;
+    setWarning(null);
+    setProgress(5, UI_STRINGS.generatingStep1);
+
+    try {
+      let bodyHTML = '';
+      let metricsData = {};
+
+      if (!SettingsManager.isConfigured()) {
+        // Offline fallback
+        setWarning(UI_STRINGS.offlineWarning);
+        setProgress(50, 'מייצר במצב לא מקוון...');
+        await new Promise(r => setTimeout(r, 300));
+        bodyHTML = FallbackExtractor.buildFallbackHTML(currentDoc, currentPalette, currentDirection, style);
+        setProgress(90, UI_STRINGS.generatingStep3);
+        metricsData = {
+          tokensIn: 0, tokensOut: 0, totalTokens: 0,
+          promptChars: currentDoc.raw_text.length,
+          ttft: 0, totalLatency: 0, tokensPerSec: 0,
+          model: 'offline', endpoint: 'N/A',
+          wordCount: currentDoc.word_count, charCount: currentDoc.char_count,
+          estPages: Math.ceil(currentDoc.word_count / 250),
+        };
+      } else {
+        const dir = currentDirection === 'auto'
+          ? (currentDoc.language === 'he' ? 'rtl' : 'ltr')
+          : currentDirection;
+
+        setProgress(15, UI_STRINGS.generatingStep2);
+        const systemPrompt = PromptBuilder.buildSystemPrompt(dir, currentPalette);
+        const { prompt: userPrompt, truncated } = PromptBuilder.buildUserPrompt(
+          currentDoc, settings, dir, style, currentPalette, depth
+        );
+        if (truncated) setWarning(UI_STRINGS.truncatedWarning);
+
+        const result = await LLMClient.generate(settings, systemPrompt, userPrompt, (pct) => {
+          setProgress(15 + Math.round(pct * 0.7), UI_STRINGS.generatingStep2);
+        });
+
+        bodyHTML = result.content;
+
+        // Count output elements
+        const parser = new DOMParser();
+        const outDoc = parser.parseFromString(bodyHTML, 'text/html');
+        const sectionCount = outDoc.querySelectorAll('section, .section, h2, h3').length;
+        const chartCount = outDoc.querySelectorAll('canvas').length;
+        const cardCount = outDoc.querySelectorAll('.card, [class*="card"]').length;
+
+        metricsData = {
+          tokensIn: result.usage.tokensIn,
+          tokensOut: result.usage.tokensOut,
+          totalTokens: result.usage.tokensIn + result.usage.tokensOut,
+          promptChars: userPrompt.length,
+          ttft: result.ttft,
+          totalLatency: result.totalLatency,
+          tokensPerSec: result.tokensPerSec,
+          model: result.model,
+          endpoint: (() => { try { return new URL(result.endpoint).hostname; } catch(e) { return result.endpoint; } })(),
+          wordCount: currentDoc.word_count,
+          charCount: currentDoc.char_count,
+          estPages: Math.ceil(currentDoc.word_count / 250),
+          sectionCount, chartCount, cardCount,
+        };
+      }
+
+      MetricsCollector.record(metricsData);
+
+      const direction = currentDirection === 'auto'
+        ? (currentDoc.language === 'he' ? 'rtl' : 'ltr')
+        : currentDirection;
+
+      setProgress(95, UI_STRINGS.generatingStep3);
+      const frame = $('preview-frame');
+      const placeholder = $('preview-placeholder');
+      OutputRenderer.render(frame, placeholder, bodyHTML, direction);
+
+      lastGeneratedHTML = OutputRenderer.getIframeDocForExport(bodyHTML, direction);
+      lastTitle = currentDoc.title;
+      $('btn-export').disabled = false;
+
+      setProgress(null);
+
+    } catch(e) {
+      let msg = UI_STRINGS.errorAPI;
+      if (e.name === 'AbortError') msg = UI_STRINGS.errorTimeout;
+      else if (e.message) msg = '❌ ' + e.message;
+      setWarning(msg);
+      setProgress(null);
+    } finally {
+      $('btn-generate').disabled = false;
+      $('btn-generate').innerHTML = '✨ צור מסמך';
+    }
+  }
+
+  // ---- Export ----
+  function exportHTML() {
+    if (!lastGeneratedHTML) return;
+    ExportEngine.download(lastGeneratedHTML, lastTitle);
+  }
+
+  // ---- Settings Modal ----
+  function setupSettingsModal() {
+    $('btn-settings').addEventListener('click', openSettings);
+    $('settings-close').addEventListener('click', closeSettings);
+    $('settings-cancel').addEventListener('click', closeSettings);
+    $('settings-save').addEventListener('click', saveSettings);
+    $('settings-modal').addEventListener('click', e => { if (e.target === $('settings-modal')) closeSettings(); });
+
+    // Sliders
+    $('s-max-tokens').addEventListener('input', function() { $('s-tokens-val').textContent = this.value; });
+    $('s-temperature').addEventListener('input', function() { $('s-temp-val').textContent = parseFloat(this.value).toFixed(2); });
+
+    // Key visibility
+    $('toggle-key-vis').addEventListener('click', () => {
+      const inp = $('s-api-key');
+      inp.type = inp.type === 'password' ? 'text' : 'password';
+    });
+
+    // Test connection
+    $('btn-test-conn').addEventListener('click', testConnection);
+  }
+
+  function openSettings() {
+    const s = SettingsManager.load();
+    $('s-api-url').value = s.apiUrl || '';
+    $('s-api-key').value = s.apiKey || '';
+    $('s-model').value = s.model || 'claude-3-5-sonnet-20241022';
+    $('s-max-tokens').value = s.maxTokens || 4000;
+    $('s-tokens-val').textContent = s.maxTokens || 4000;
+    $('s-temperature').value = s.temperature || 0.7;
+    $('s-temp-val').textContent = (s.temperature || 0.7).toFixed(2);
+    $('s-timeout').value = s.timeout || 60;
+    $('conn-result').textContent = '';
+    $('settings-modal').classList.add('open');
+  }
+
+  function closeSettings() {
+    $('settings-modal').classList.remove('open');
+  }
+
+  function saveSettings() {
+    SettingsManager.save({
+      apiUrl: $('s-api-url').value.trim(),
+      apiKey: $('s-api-key').value.trim(),
+      model: $('s-model').value.trim(),
+      maxTokens: parseInt($('s-max-tokens').value),
+      temperature: parseFloat($('s-temperature').value),
+      timeout: parseInt($('s-timeout').value),
+    });
+    closeSettings();
+  }
+
+  async function testConnection() {
+    const settings = {
+      apiUrl: $('s-api-url').value.trim(),
+      apiKey: $('s-api-key').value.trim(),
+      model: $('s-model').value.trim(),
+      timeout: parseInt($('s-timeout').value) || 60,
+    };
+    if (!settings.apiUrl || !settings.apiKey || !settings.model) {
+      $('conn-result').innerHTML = '<span class="text-danger">נא למלא את כל השדות</span>';
+      return;
+    }
+    $('conn-result').textContent = UI_STRINGS.connTesting;
+    $('btn-test-conn').disabled = true;
+    try {
+      await LLMClient.testConnection(settings);
+      $('conn-result').innerHTML = `<span class="text-success">${UI_STRINGS.connSuccess}</span>`;
+    } catch(e) {
+      $('conn-result').innerHTML = `<span class="text-danger">${UI_STRINGS.connFail}${e.message}</span>`;
+    } finally {
+      $('btn-test-conn').disabled = false;
+    }
+  }
+
+  // ---- Metrics Modal ----
+  function setupMetricsModal() {
+    $('btn-metrics').addEventListener('click', openMetrics);
+    $('metrics-close').addEventListener('click', () => $('metrics-modal').classList.remove('open'));
+    $('metrics-modal').addEventListener('click', e => { if (e.target === $('metrics-modal')) $('metrics-modal').classList.remove('open'); });
+    $('btn-clear-history').addEventListener('click', () => {
+      MetricsCollector.clearHistory();
+      renderMetrics();
+    });
+
+    // Tabs
+    document.querySelectorAll('#metrics-modal .tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('#metrics-modal .tab-btn').forEach(b => {
+          b.classList.remove('active');
+          b.setAttribute('aria-selected', 'false');
+        });
+        document.querySelectorAll('#metrics-modal .tab-panel').forEach(p => p.classList.remove('active'));
+        btn.classList.add('active');
+        btn.setAttribute('aria-selected', 'true');
+        $('tab-' + btn.dataset.tab).classList.add('active');
+      });
+    });
+  }
+
+  function openMetrics() {
+    renderMetrics();
+    $('metrics-modal').classList.add('open');
+  }
+
+  function renderMetrics() {
+    const current = MetricsCollector.getCurrent();
+    const history = MetricsCollector.getHistory();
+    const L = UI_STRINGS.metricsLabels;
+
+    // Current
+    if (!current) {
+      $('metrics-current-content').innerHTML = `<div class="empty-state"><div class="es-icon">📊</div><div class="es-text">${UI_STRINGS.noCurrent}</div></div>`;
+    } else {
+      $('metrics-current-content').innerHTML = `
+        <div class="metrics-row-grid">
+          ${metricCard(L.tokensIn, current.tokensIn?.toLocaleString() || '—')}
+          ${metricCard(L.tokensOut, current.tokensOut?.toLocaleString() || '—')}
+          ${metricCard(L.totalTokens, current.totalTokens?.toLocaleString() || '—')}
+          ${metricCard(L.promptChars, current.promptChars?.toLocaleString() || '—')}
+          ${metricCard(L.ttft, current.ttft ? current.ttft + ' ms' : '—')}
+          ${metricCard(L.latency, current.totalLatency ? current.totalLatency + ' ms' : '—')}
+          ${metricCard(L.tokensPerSec, current.tokensPerSec || '—')}
+          ${metricCard(L.model, current.model || '—')}
+        </div>
+        <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:14px;margin-bottom:14px">
+          <div style="font-size:12px;font-weight:700;color:#64748b;margin-bottom:8px;text-transform:uppercase">פרטי נקודת קצה</div>
+          <div style="font-size:13px">שרת: <strong>${current.endpoint || '—'}</strong></div>
+          <div style="font-size:13px;margin-top:4px">חותמת זמן: <strong>${current.timestamp ? new Date(current.timestamp).toLocaleString('he-IL') : '—'}</strong></div>
+        </div>
+        <div class="metrics-row-grid">
+          ${metricCard(L.wordCount, current.wordCount?.toLocaleString() || '—')}
+          ${metricCard(L.charCount, current.charCount?.toLocaleString() || '—')}
+          ${metricCard(L.estPages, current.estPages || '—')}
+          ${metricCard(L.sectionCount, current.sectionCount ?? '—')}
+          ${metricCard(L.chartCount, current.chartCount ?? '—')}
+          ${metricCard(L.cardCount, current.cardCount ?? '—')}
+        </div>`;
+    }
+
+    // History
+    if (!history.length) {
+      $('metrics-history-content').innerHTML = `<div class="empty-state"><div class="es-icon">🕐</div><div class="es-text">${UI_STRINGS.noHistory}</div></div>`;
+    } else {
+      const cols = ['timestamp', 'model', 'tokensIn', 'tokensOut', 'totalLatency', 'tokensPerSec'];
+      const colNames = ['זמן', 'מודל', 'טוקנים נכנסים', 'טוקנים יוצאים', 'זמן (ms)', 'טוקנים/שנ\''];
+      let rows = [...history];
+      if (metricsHistorySortCol !== null) {
+        rows.sort((a, b) => {
+          const av = a[cols[metricsHistorySortCol]], bv = b[cols[metricsHistorySortCol]];
+          if (typeof av === 'number' && typeof bv === 'number') return (av - bv) * metricsHistorySortDir;
+          return String(av).localeCompare(String(bv)) * metricsHistorySortDir;
+        });
+      }
+      $('metrics-history-content').innerHTML = `
+        <div style="overflow-x:auto">
+        <table class="metrics-table" role="table" aria-label="היסטוריית ריצות">
+          <thead><tr>
+            ${cols.map((c, i) => `<th role="columnheader" tabindex="0" data-col="${i}">${colNames[i]} ${metricsHistorySortCol === i ? (metricsHistorySortDir > 0 ? '↑' : '↓') : ''}</th>`).join('')}
+          </tr></thead>
+          <tbody>
+            ${rows.map(r => `<tr>
+              <td>${r.timestamp ? new Date(r.timestamp).toLocaleString('he-IL') : '—'}</td>
+              <td>${r.model || '—'}</td>
+              <td>${r.tokensIn?.toLocaleString() || '—'}</td>
+              <td>${r.tokensOut?.toLocaleString() || '—'}</td>
+              <td>${r.totalLatency || '—'}</td>
+              <td>${r.tokensPerSec || '—'}</td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+        </div>`;
+
+      // Sort handlers
+      $('metrics-history-content').querySelectorAll('th[data-col]').forEach(th => {
+        th.addEventListener('click', () => {
+          const col = parseInt(th.dataset.col);
+          if (metricsHistorySortCol === col) metricsHistorySortDir *= -1;
+          else { metricsHistorySortCol = col; metricsHistorySortDir = 1; }
+          renderMetrics();
+        });
+        th.addEventListener('keydown', e => { if (e.key === 'Enter') th.click(); });
+      });
+    }
+  }
+
+  function metricCard(label, value) {
+    return `<div class="metric-card">
+      <div class="metric-label">${label}</div>
+      <div class="metric-value">${value}</div>
+    </div>`;
+  }
+
+  // ---- Init ----
+  function init() {
+    setupUpload();
+    setupTextArea();
+    setupDirectionToggle();
+    setupDepthSlider();
+    setupPalettePicker();
+    setupPreviewSize();
+    setupSettingsModal();
+    setupMetricsModal();
+
+    $('btn-generate').addEventListener('click', generate);
+    $('btn-export').addEventListener('click', exportHTML);
+
+    // Keyboard: Escape closes modals
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape') {
+        $('settings-modal').classList.remove('open');
+        $('metrics-modal').classList.remove('open');
+      }
+    });
+
+    // Check if API configured on load
+    if (!SettingsManager.isConfigured()) {
+      setWarning(UI_STRINGS.offlineWarning);
+    }
+  }
+
+  return { init };
+})();
+
+// Boot
+document.addEventListener('DOMContentLoaded', () => AppController.init());
+</script>
+</body>
+</html>
