@@ -1069,35 +1069,111 @@ const PromptBuilder = (() => {
 
   function buildSystemPrompt(direction, palette) {
     const pal = getPaletteCSS(palette);
+    const dir = direction === 'auto' ? 'auto' : direction;
+    const lang = dir === 'rtl' ? 'he' : 'en';
     return `You are a Visual Research Analyst and expert HTML/CSS/JS developer.
-Your task is to transform documents into rich, interactive, self-contained HTML infographics.
+Transform the provided document into a rich, interactive, self-contained HTML infographic — identical in quality and structure to a Gemini Deep Research Canvas export.
 
 PALETTE: primary=${pal.primary}, secondary=${pal.secondary}, accent=${pal.accent}, bg=${pal.bg}
-DIRECTION: ${direction}
+DIRECTION: ${dir}
 HERO GRADIENT: ${pal.hero}
 
-RULES:
-1. Output ONLY the inner HTML body content — no <html>, <head>, or <body> tags.
-2. All styles must be inline or in a <style> block within your output.
-3. Do NOT use any CDN links or external resources.
-4. Include Chart.js usage via: const ctx = document.getElementById('chartX').getContext('2d'); new Chart(ctx, {...})
-   Chart.js is already loaded in the parent document and available globally.
-5. Identify 3-8 key themes and assign visual treatment per section:
-   - stat callout: large KPI number + label
-   - comparison cards: side-by-side feature comparison
-   - chart: bar/line/doughnut using Chart.js
-   - process flow: numbered steps with arrows
-   - prose: styled paragraph with pull quote
-6. Include a gradient hero header with the document title.
-7. Add KPI callout boxes for any numeric data found.
-8. Section cards should have hover effects (box-shadow, transform).
-9. If numeric/tabular data exists, include at least one Chart.js chart.
-10. If a process is described, include a visual flow chart.
-11. Text direction: all elements should use dir="${direction === 'auto' ? 'auto' : direction}".
-12. Use the palette colors consistently throughout.
-13. The output must be complete and renderable as-is inside an iframe srcdoc.
-14. Add smooth CSS transitions and professional typography.
-15. Make it look polished and professional — not a prototype.`;
+═══ MANDATORY OUTPUT STRUCTURE ═══
+
+Your output must follow this EXACT visual structure:
+
+① STYLE BLOCK — open with:
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Heebo', system-ui, -apple-system, Arial, sans-serif; background: #F3F4F6; color: #1F2937; direction: ${dir}; }
+  .chart-container { position: relative; width: 100%; max-width: 700px; margin: 0 auto; height: 350px; }
+  @media (min-width: 768px) { .chart-container { height: 400px; } }
+  .card-hover { transition: transform 0.3s, box-shadow 0.3s; cursor: default; }
+  .card-hover:hover { transform: translateY(-5px); box-shadow: 0 10px 25px -5px rgba(0,0,0,0.15); }
+  .gradient-hero { background: ${pal.hero}; }
+  .section-title { display: inline-block; border-bottom: 4px solid ${pal.primary}; padding-bottom: 6px; }
+</style>
+
+② HERO HEADER — full-width, rounded bottom, emoji icon, title, subtitle:
+<header style="background:${pal.hero};color:#fff;padding:64px 24px 48px;text-align:center;border-radius:0 0 24px 24px;margin-bottom:40px;box-shadow:0 4px 20px rgba(0,0,0,0.15)">
+  <div style="font-size:64px;margin-bottom:12px">[RELEVANT_EMOJI]</div>
+  <h1 style="font-size:clamp(28px,5vw,48px);font-weight:800;margin-bottom:16px;letter-spacing:-0.5px">[DOCUMENT_TITLE]</h1>
+  <p style="font-size:clamp(15px,2vw,20px);opacity:0.9;max-width:700px;margin:0 auto;font-weight:300">[ONE_LINE_SUBTITLE]</p>
+</header>
+
+③ MAIN CONTENT — inside: <main style="max-width:1100px;margin:0 auto;padding:0 20px 80px;display:flex;flex-direction:column;gap:48px">
+
+④ For each KEY SECTION use a white card:
+<section style="background:#fff;border-radius:16px;box-shadow:0 2px 12px rgba(0,0,0,0.07);padding:32px 40px">
+  <h2 class="section-title" style="font-size:26px;font-weight:700;color:#1F2937;margin-bottom:24px">[SECTION_TITLE]</h2>
+  [SECTION_CONTENT]
+</section>
+
+⑤ CHART SECTION — always include at least one Chart.js chart. Use doughnut for distributions, radar for comparisons, bar for rankings:
+  <div class="chart-container"><canvas id="chart1"></canvas></div>
+  Pair charts with KPI CALLOUT BOXES in a two-column grid:
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:24px">
+    <div style="background:${pal.bg};border-radius:12px;padding:20px;border:1px solid ${pal.accent}">
+      <div style="font-size:36px;font-weight:800;color:${pal.primary}">[NUMBER]</div>
+      <div style="font-weight:600;color:#374151;margin-top:4px">[LABEL]</div>
+      <p style="font-size:13px;color:#6B7280;margin-top:6px">[DESCRIPTION]</p>
+    </div>
+  </div>
+
+⑥ ENTITY/COMPARISON CARDS — use colored top border per entity:
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:24px">
+  <article class="card-hover" style="background:#fff;border-radius:16px;box-shadow:0 2px 12px rgba(0,0,0,0.08);overflow:hidden;border:1px solid #F3F4F6">
+    <div style="height:5px;background:${pal.primary}"></div>
+    <div style="padding:24px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
+        <h3 style="font-size:20px;font-weight:700">[ENTITY_NAME]</h3>
+        <span style="font-size:28px">[EMOJI]</span>
+      </div>
+      <p style="font-size:13px;color:#6B7280;border-bottom:1px solid #F3F4F6;padding-bottom:16px;margin-bottom:16px">[SHORT_DESC]</p>
+      [ENTITY_DETAILS_AS_BOLD_LABEL_PAIRS]
+      <div style="background:${pal.bg};border-radius:8px;padding:12px;margin-top:12px;border:1px solid ${pal.accent}">
+        <strong style="color:${pal.secondary}">[KEY_POINT_LABEL]:</strong> [KEY_POINT_TEXT]
+      </div>
+    </div>
+  </article>
+</div>
+
+⑦ PROCESS FLOWCHART — use a dark gradient section when a process/workflow is present:
+<section style="background:linear-gradient(135deg,#1F2937,#374151);border-radius:16px;padding:40px;color:#fff;text-align:center">
+  <h2 style="font-size:26px;font-weight:700;margin-bottom:12px">[FLOWCHART_TITLE]</h2>
+  <p style="color:#D1D5DB;margin-bottom:32px">[FLOWCHART_SUBTITLE]</p>
+  <div style="display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:12px">
+    [REPEAT: step card + arrow between steps]
+    <div style="background:#fff;border-radius:12px;padding:20px;width:200px;color:#1F2937;border-bottom:4px solid ${pal.primary}">
+      <div style="font-size:32px;margin-bottom:8px">[STEP_EMOJI]</div>
+      <h4 style="font-weight:700;font-size:15px">[STEP_N]. [STEP_TITLE]</h4>
+      <p style="font-size:12px;color:#6B7280;margin-top:6px">[STEP_DESC]</p>
+    </div>
+    <div style="font-size:24px;color:${pal.accent}">➔</div>
+  </div>
+</section>
+
+⑧ FOOTER:
+<footer style="text-align:center;color:#9CA3AF;font-size:13px;margin-top:40px;padding-top:24px;border-top:1px solid #E5E7EB">
+  [FOOTER_TEXT]
+</footer>
+
+═══ CHART.JS INSTRUCTIONS ═══
+Chart.js is already loaded globally. Use it like:
+  var ctx = document.getElementById('chart1').getContext('2d');
+  new Chart(ctx, { type: 'doughnut', data: {...}, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', rtl: ${dir === 'rtl'} } } } });
+
+Include a <script> block at the end of your output with all chart initializations.
+
+═══ STRICT RULES ═══
+1. Output ONLY inner HTML body content — NO <html>, <head>, or <body> tags.
+2. NO external CDN links or @import font URLs.
+3. NO SVG charts, NO Mermaid, NO canvas-less charts.
+4. NO HTML/CSS/JS comments in the output.
+5. ALL styles inline or in a single <style> block at the top of your output.
+6. Direction: dir="${dir}" on the body style. RTL-aware legend: rtl:${dir === 'rtl'}.
+7. Use Heebo font family in the font-family stack.
+8. Output must be a COMPLETE, renderable HTML fragment — every chart must have its canvas and its initialization script.`;
   }
 
   function buildUserPrompt(doc, settings, direction, style, palette, depth) {
@@ -1328,91 +1404,149 @@ const FallbackExtractor = (() => {
 
   function buildFallbackHTML(doc, palette, direction, style) {
     const pal = PromptBuilder.getPaletteCSS(palette);
-    const phrases = extractTopPhrases(doc.raw_text);
+    const phrases = extractTopPhrases(doc.raw_text, 8);
     const numbers = extractNumbers(doc.raw_text);
-    const headings = extractHeadings(doc.raw_text).slice(0, 6);
-    const dir = direction === 'auto' ? doc.language === 'he' ? 'rtl' : 'ltr' : direction;
+    const headings = extractHeadings(doc.raw_text).slice(0, 8);
+    const dir = direction === 'auto' ? (doc.language === 'he' ? 'rtl' : 'ltr') : direction;
 
-    const kpiCards = numbers.slice(0, 4).map(n =>
-      `<div style="background:${pal.bg};border:2px solid ${pal.accent};border-radius:12px;padding:16px 20px;text-align:center">
-        <div style="font-size:32px;font-weight:800;color:${pal.primary}">${n.value.toLocaleString()}${n.unit}</div>
-        <div style="font-size:12px;color:#64748b;margin-top:4px">${n.context.substring(0,40)}</div>
-      </div>`
-    ).join('');
+    const CARD_COLORS = [pal.primary, '#10b981', '#8b5cf6', '#f59e0b', '#ef4444', '#06b6d4', '#ec4899', '#14b8a6'];
 
-    const sectionCards = (headings.length > 0 ? headings : phrases).map((h, i) =>
-      `<div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:20px;transition:transform 0.2s,box-shadow 0.2s;cursor:default"
-        onmouseover="this.style.transform='translateY(-3px)';this.style.boxShadow='0 8px 24px rgba(0,0,0,0.12)'"
-        onmouseout="this.style.transform='';this.style.boxShadow=''">
-        <div style="width:36px;height:36px;border-radius:50%;background:${pal.hero};color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;margin-bottom:12px">${i+1}</div>
-        <h3 style="font-size:16px;color:${pal.secondary};margin:0 0 8px">${h.replace(/^#+\s*/,'')}</h3>
-        <p style="font-size:13px;color:#64748b;margin:0">נושא מרכזי שזוהה במסמך</p>
-      </div>`
-    ).join('');
+    const kpiPairs = numbers.slice(0, 4);
+    const kpiHTML = kpiPairs.length >= 2 ? `
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:20px;margin-top:24px">
+        ${kpiPairs.map(n => `
+          <div style="background:${pal.bg};border-radius:12px;padding:20px;border:1px solid ${pal.accent}">
+            <div style="font-size:36px;font-weight:800;color:${pal.primary}">${n.value.toLocaleString()}${n.unit}</div>
+            <div style="font-weight:600;color:#374151;margin-top:4px;font-size:14px">${n.context.substring(0,40)}</div>
+          </div>`).join('')}
+      </div>` : '';
 
-    const chartData = numbers.slice(0, 5);
-    const chartSection = chartData.length >= 2 ? `
-      <div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:24px;margin-bottom:24px">
-        <h3 style="margin:0 0 16px;color:${pal.secondary}">נתונים מספריים שזוהו</h3>
-        <canvas id="fallbackChart" height="200"></canvas>
-      </div>
-      <script>
-        (function() {
-          try {
-            var ctx = document.getElementById('fallbackChart').getContext('2d');
-            new Chart(ctx, {
-              type: 'bar',
-              data: {
-                labels: ${JSON.stringify(chartData.map(n => n.context.substring(0,15)))},
-                datasets: [{ label: 'ערכים', data: ${JSON.stringify(chartData.map(n => n.value))},
-                  backgroundColor: '${pal.accent}', borderColor: '${pal.primary}', borderWidth: 2 }]
-              },
-              options: { responsive: true, plugins: { legend: { display: false } } }
-            });
-          } catch(e) {}
-        })();
-      <\/script>` : '';
+    const chartNums = numbers.slice(0, 6);
+    const donutData = phrases.slice(0, 5);
+    const hasChartData = chartNums.length >= 2 || donutData.length >= 3;
+    const chartSectionHTML = hasChartData ? `
+      <section style="background:#fff;border-radius:16px;box-shadow:0 2px 12px rgba(0,0,0,0.07);padding:32px 40px">
+        <h2 style="font-size:22px;font-weight:700;color:#1F2937;display:inline-block;border-bottom:4px solid ${pal.primary};padding-bottom:6px;margin-bottom:28px">
+          ${dir === 'rtl' ? 'התפלגות נושאים' : 'Topic Distribution'}
+        </h2>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:32px;align-items:center">
+          <div style="position:relative;height:300px"><canvas id="fbDonut"></canvas></div>
+          ${chartNums.length >= 2 ? `<div style="position:relative;height:300px"><canvas id="fbBar"></canvas></div>` : '<div></div>'}
+        </div>
+      </section>` : '';
 
-    return `
-<style>
-  * { box-sizing: border-box; }
-  body { font-family: system-ui, Arial, sans-serif; margin: 0; padding: 0; background: #f8fafc; direction: ${dir}; }
-  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-  .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
-  @media (max-width: 600px) { .grid2, .grid3 { grid-template-columns: 1fr; } }
+    const sectionItems = headings.length > 0 ? headings : phrases.slice(0, 6);
+    const cardsHTML = sectionItems.map((h, i) => {
+      const color = CARD_COLORS[i % CARD_COLORS.length];
+      const cleanH = h.replace(/^#+\s*/, '');
+      return `
+        <article style="background:#fff;border-radius:16px;box-shadow:0 2px 12px rgba(0,0,0,0.08);overflow:hidden;border:1px solid #F3F4F6;transition:transform 0.3s,box-shadow 0.3s;cursor:default"
+          onmouseover="this.style.transform='translateY(-5px)';this.style.boxShadow='0 10px 25px -5px rgba(0,0,0,0.15)'"
+          onmouseout="this.style.transform='';this.style.boxShadow=''">
+          <div style="height:5px;background:${color}"></div>
+          <div style="padding:24px">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
+              <h3 style="font-size:17px;font-weight:700;color:#1F2937;margin:0">${cleanH}</h3>
+              <div style="width:32px;height:32px;border-radius:50%;background:${color};color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;flex-shrink:0;margin-${dir==='rtl'?'right':'left'}:10px">${i+1}</div>
+            </div>
+            <p style="font-size:13px;color:#6B7280;margin:0">${dir === 'rtl' ? 'נושא מרכזי שזוהה במסמך' : 'Key topic identified in document'}</p>
+            <div style="background:${pal.bg};border-radius:8px;padding:10px 12px;margin-top:14px;border:1px solid ${pal.accent}">
+              <span style="font-size:12px;color:${pal.secondary};font-weight:600">${doc.title}</span>
+            </div>
+          </div>
+        </article>`;
+    }).join('');
+
+    const keywordHTML = phrases.length > 0 ? `
+      <section style="background:#fff;border-radius:16px;box-shadow:0 2px 12px rgba(0,0,0,0.07);padding:28px 36px">
+        <h2 style="font-size:20px;font-weight:700;color:#1F2937;display:inline-block;border-bottom:4px solid ${pal.primary};padding-bottom:6px;margin-bottom:20px">
+          ${dir === 'rtl' ? 'מילות מפתח' : 'Keywords'}
+        </h2>
+        <div style="display:flex;flex-wrap:wrap;gap:10px">
+          ${phrases.map((p, i) => `<span style="background:${pal.bg};color:${pal.primary};border:1.5px solid ${pal.accent};border-radius:99px;padding:6px 18px;font-size:13px;font-weight:600">${p}</span>`).join('')}
+        </div>
+      </section>` : '';
+
+    const chartScript = hasChartData ? `
+<script>
+(function() {
+  try {
+    ${donutData.length >= 3 ? `
+    var ctxD = document.getElementById('fbDonut');
+    if (ctxD) new Chart(ctxD.getContext('2d'), {
+      type: 'doughnut',
+      data: {
+        labels: ${JSON.stringify(donutData)},
+        datasets: [{ data: ${JSON.stringify(donutData.map((_,i)=>Math.round(100/(donutData.length+i*0.3))))},
+          backgroundColor: ${JSON.stringify(CARD_COLORS.slice(0, donutData.length))},
+          borderWidth: 2, borderColor: '#fff' }]
+      },
+      options: { responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { position: '${dir==='rtl'?'right':'left'}', rtl: ${dir==='rtl'},
+          labels: { font: { family: "'Heebo', system-ui, Arial", size: 13 } } } } }
+    });` : ''}
+    ${chartNums.length >= 2 ? `
+    var ctxB = document.getElementById('fbBar');
+    if (ctxB) new Chart(ctxB.getContext('2d'), {
+      type: 'bar',
+      data: {
+        labels: ${JSON.stringify(chartNums.map(n => n.context.substring(0,18)))},
+        datasets: [{ label: '${dir==='rtl'?'ערכים':'Values'}',
+          data: ${JSON.stringify(chartNums.map(n => n.value))},
+          backgroundColor: ${JSON.stringify(CARD_COLORS.slice(0, chartNums.length))},
+          borderRadius: 6 }]
+      },
+      options: { responsive: true, maintainAspectRatio: false, indexAxis: 'y',
+        plugins: { legend: { display: false } },
+        scales: { x: { grid: { color: 'rgba(0,0,0,0.05)' } }, y: { grid: { display: false } } } }
+    });` : ''}
+  } catch(e) { console.warn('chart init failed', e); }
+})();
+<\/script>` : '';
+
+    return `<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Heebo', system-ui, -apple-system, Arial, sans-serif; background: #F3F4F6; color: #1F2937; direction: ${dir}; }
+  @media (max-width: 640px) { .cards-grid { grid-template-columns: 1fr !important; } }
 </style>
 
-<div style="background:${pal.hero};color:#fff;padding:48px 32px;text-align:center">
-  <div style="font-size:12px;opacity:0.8;margin-bottom:8px;text-transform:uppercase;letter-spacing:0.1em">מסמך אינטראקטיבי</div>
-  <h1 style="font-size:32px;font-weight:800;margin:0 0 12px">${doc.title}</h1>
-  <div style="opacity:0.85;font-size:15px">${doc.word_count.toLocaleString()} מילים · ${doc.char_count.toLocaleString()} תווים</div>
-  <div style="margin-top:12px;background:rgba(255,255,255,0.15);border-radius:8px;padding:6px 16px;display:inline-block;font-size:13px">
-    ⚠️ פועל במצב לא מקוון — איכות מוגבלת
+<header style="background:${pal.hero};color:#fff;padding:64px 24px 48px;text-align:center;border-radius:0 0 24px 24px;margin-bottom:40px;box-shadow:0 4px 20px rgba(0,0,0,0.15)">
+  <div style="font-size:56px;margin-bottom:12px">📄</div>
+  <h1 style="font-size:clamp(24px,5vw,44px);font-weight:800;margin-bottom:16px">${doc.title}</h1>
+  <p style="font-size:16px;opacity:0.85;font-weight:300">${doc.word_count.toLocaleString()} ${dir==='rtl'?'מילים':'words'} · ${doc.char_count.toLocaleString()} ${dir==='rtl'?'תווים':'chars'}</p>
+  <div style="margin-top:16px;background:rgba(0,0,0,0.2);border-radius:8px;padding:8px 20px;display:inline-block;font-size:13px">
+    ⚠️ ${dir==='rtl'?'מצב לא מקוון — ניתוח היוריסטי בלבד':'Offline mode — heuristic analysis only'}
   </div>
-</div>
+</header>
 
-<div style="max-width:900px;margin:0 auto;padding:32px 24px">
+<main style="max-width:1100px;margin:0 auto;padding:0 20px 80px;display:flex;flex-direction:column;gap:40px">
 
-  ${kpiCards ? `<h2 style="color:${pal.secondary};margin:0 0 16px">נתונים מספריים מרכזיים</h2>
-  <div class="grid2" style="margin-bottom:32px">${kpiCards}</div>` : ''}
+  ${kpiHTML ? `<section style="background:#fff;border-radius:16px;box-shadow:0 2px 12px rgba(0,0,0,0.07);padding:32px 40px">
+    <h2 style="font-size:22px;font-weight:700;color:#1F2937;display:inline-block;border-bottom:4px solid ${pal.primary};padding-bottom:6px;margin-bottom:4px">
+      ${dir==='rtl'?'נתונים מספריים מרכזיים':'Key Statistics'}
+    </h2>
+    ${kpiHTML}
+  </section>` : ''}
 
-  ${chartSection}
+  ${chartSectionHTML}
 
-  <h2 style="color:${pal.secondary};margin:0 0 16px">נושאים מרכזיים</h2>
-  <div class="grid3" style="margin-bottom:32px">${sectionCards}</div>
-
-  ${phrases.length > 0 ? `
-  <div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:24px;margin-bottom:24px">
-    <h3 style="margin:0 0 16px;color:${pal.secondary}">מילות מפתח</h3>
-    <div style="display:flex;flex-wrap:wrap;gap:8px">
-      ${phrases.map(p => `<span style="background:${pal.bg};color:${pal.primary};border:1px solid ${pal.accent};border-radius:99px;padding:4px 14px;font-size:13px;font-weight:600">${p}</span>`).join('')}
+  <section style="background:#fff;border-radius:16px;box-shadow:0 2px 12px rgba(0,0,0,0.07);padding:32px 40px">
+    <h2 style="font-size:22px;font-weight:700;color:#1F2937;display:inline-block;border-bottom:4px solid ${pal.primary};padding-bottom:6px;margin-bottom:28px">
+      ${dir==='rtl'?'נושאים מרכזיים':'Key Topics'}
+    </h2>
+    <div class="cards-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:20px">
+      ${cardsHTML}
     </div>
-  </div>` : ''}
+  </section>
 
-  <div style="background:${pal.secondary};color:#fff;border-radius:12px;padding:20px;text-align:center">
-    <div style="font-size:12px;opacity:0.7">נוצר על ידי מחולל מסמכים אינטראקטיבי · מצב לא מקוון</div>
-  </div>
-</div>`;
+  ${keywordHTML}
+
+  <footer style="text-align:center;color:#9CA3AF;font-size:13px;padding-top:24px;border-top:1px solid #E5E7EB">
+    ${dir==='rtl'?'נוצר על ידי מחולל מסמכים אינטראקטיבי · מצב לא מקוון':'Created by Interactive Document Generator · Offline mode'}
+  </footer>
+
+</main>
+${chartScript}`;
   }
 
   return { buildFallbackHTML };
@@ -1425,26 +1559,25 @@ const OutputRenderer = (() => {
   // Inline Chart.js script for iframe (we share the one from parent)
   function buildIframeDocument(bodyContent, direction) {
     const dir = direction === 'auto' ? 'auto' : direction;
-    // Grab Chart.js source from parent window for iframe use
-    const chartScript = `<script>
-      // Chart.js stub for iframe
-      if (typeof Chart === 'undefined') {
-        window.Chart = ${Chart.toString()};
-        Chart.register = function(){};
-        Chart.defaults = { font: {}, color: '#666' };
-      }
-    <\/script>`;
-
+    const lang = dir === 'rtl' ? 'he' : 'en';
     return `<!DOCTYPE html>
-<html lang="${dir === 'rtl' ? 'he' : 'en'}" dir="${dir}">
+<html lang="${lang}" dir="${dir}">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <style>
   * { box-sizing: border-box; }
-  body { margin: 0; font-family: system-ui, Arial, sans-serif; }
+  body { margin: 0; font-family: 'Heebo', system-ui, -apple-system, Arial, sans-serif; background: #F3F4F6; }
 </style>
-${chartScript}
+<script>
+  (function() {
+    try {
+      if (typeof Chart === 'undefined' && window.parent && window.parent.Chart) {
+        window.Chart = window.parent.Chart;
+      }
+    } catch(e) {}
+  })();
+<\/script>
 </head>
 <body>
 ${bodyContent}
