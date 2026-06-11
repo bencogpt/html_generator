@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Interactive Infographic Generator</title>
+<!-- {{BUILD_INFO}} -->
+<style>
+{{FONT_CSS}}
+</style>
+<style>
+{{APP_CSS}}
+</style>
+</head>
+<body>
+
+<header id="topbar">
+  <div class="brand">
+    <span class="logo" aria-hidden="true">📊</span>
+    <div class="brand-text">
+      <h1 data-i18n="app_title"></h1>
+      <p data-i18n="app_sub"></p>
+    </div>
+  </div>
+  <div id="statusbar" role="status">
+    <span id="sb-dot" class="dot dot-gray" title="connection status"></span>
+    <span id="sb-profile" class="sb-item"></span>
+    <span id="sb-model" class="sb-item"></span>
+    <span id="sb-last" class="sb-item"></span>
+  </div>
+  <div class="topbar-actions">
+    <button id="btn-lang" class="btn ghost" type="button"></button>
+    <button id="btn-metrics" class="btn ghost" type="button">📈 <span data-i18n="btn_metrics"></span></button>
+    <button id="btn-settings" class="btn ghost" type="button">⚙️ <span data-i18n="btn_settings"></span></button>
+  </div>
+</header>
+
+<main>
+  <section id="left-col">
+
+    <div class="card" id="upload-card">
+      <div id="dropzone" tabindex="0" role="button">
+        <div class="dz-icon">📄</div>
+        <div class="dz-title" data-i18n="drop_title"></div>
+        <div class="dz-sub" id="drop-sub"></div>
+      </div>
+      <input type="file" id="file-input" accept=".docx,.doc,.txt,.md,.markdown" hidden>
+      <div id="file-chip" class="file-chip" hidden>
+        <span id="file-chip-name"></span>
+        <button id="btn-clear-file" class="chip-x" type="button" title="remove">✕</button>
+      </div>
+      <details id="paste-details">
+        <summary data-i18n="paste_toggle"></summary>
+        <textarea id="paste-area" rows="6" data-i18n-ph="paste_ph"></textarea>
+        <button id="btn-paste-use" class="btn small" type="button" data-i18n="paste_use"></button>
+      </details>
+    </div>
+
+    <div class="card" id="preview-card" hidden>
+      <h2 class="card-title" data-i18n="preview_title"></h2>
+      <div id="stats-chips" class="chips"></div>
+      <div id="preview-text" dir="auto"></div>
+    </div>
+
+    <div class="card" id="generate-card">
+      <div id="endpoint-line">
+        <span class="ep-label" data-i18n="endpoint_note"></span>
+        <code id="endpoint-url"></code>
+      </div>
+      <div class="palette-block">
+        <span class="field-label" data-i18n="palette_title"></span>
+        <div id="palette-row"></div>
+      </div>
+      <div class="gen-row">
+        <button id="btn-generate" class="btn primary big" type="button" disabled>
+          ✨ <span data-i18n="btn_generate"></span>
+        </button>
+        <button id="btn-cancel" class="btn danger big" type="button" hidden data-i18n="btn_cancel"></button>
+      </div>
+      <div id="progress" hidden>
+        <div class="spinner" aria-hidden="true"></div>
+        <span id="progress-text"></span>
+      </div>
+      <div id="warnings"></div>
+    </div>
+
+  </section>
+
+  <section id="right-col">
+    <div class="card" id="result-card">
+      <div class="result-head">
+        <h2 class="card-title" data-i18n="result_title"></h2>
+        <div class="result-tools">
+          <div class="seg">
+            <button id="btn-desktop" class="btn small seg-on" type="button" data-i18n="btn_desktop"></button>
+            <button id="btn-mobile" class="btn small" type="button" data-i18n="btn_mobile"></button>
+          </div>
+          <button id="btn-download" class="btn small" type="button" disabled>⬇ <span data-i18n="btn_download"></span></button>
+          <button id="btn-copy" class="btn small" type="button" disabled>📋 <span data-i18n="btn_copy"></span></button>
+        </div>
+      </div>
+      <div id="frame-wrap">
+        <div id="result-placeholder" data-i18n="placeholder_result"></div>
+        <!-- NFR-6: model output runs only inside this sandbox (allow-scripts,
+             NO allow-same-origin) — isolated from localStorage and API keys -->
+        <iframe id="result-frame" sandbox="allow-scripts" title="generated infographic" hidden></iframe>
+      </div>
+      <div class="regen-row">
+        <input id="regen-input" type="text" data-i18n-ph="regen_ph" disabled>
+        <button id="btn-regen" class="btn" type="button" disabled>🔄 <span data-i18n="btn_regen"></span></button>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- ============ Settings modal ============ -->
+<div id="settings-modal" class="modal-overlay" hidden>
+  <div class="modal" role="dialog" aria-modal="true">
+    <div class="modal-head">
+      <h2 data-i18n="settings_title"></h2>
+      <button class="chip-x modal-close" data-close="settings-modal" type="button">✕</button>
+    </div>
+    <div class="tabs" id="settings-tabs">
+      <button class="tab tab-on" data-tab="tab-conn" type="button" data-i18n="tab_connection"></button>
+      <button class="tab" data-tab="tab-prompt" type="button" data-i18n="tab_prompt"></button>
+      <button class="tab" data-tab="tab-output" type="button" data-i18n="tab_output"></button>
+      <button class="tab" data-tab="tab-storage" type="button" data-i18n="tab_storage"></button>
+    </div>
+    <div class="modal-body">
+
+      <div id="tab-conn" class="tab-pane">
+        <div class="profile-bar">
+          <label class="field-label" data-i18n="profiles"></label>
+          <select id="p-select"></select>
+          <button id="btn-new-profile" class="btn small" type="button" data-i18n="btn_new_profile"></button>
+          <button id="btn-dup-profile" class="btn small" type="button" data-i18n="btn_dup_profile"></button>
+          <button id="btn-del-profile" class="btn small danger" type="button" data-i18n="btn_del_profile"></button>
+          <span class="spacer"></span>
+          <button id="btn-import-profiles" class="btn small" type="button" data-i18n="btn_import"></button>
+          <button id="btn-export-profiles" class="btn small" type="button" data-i18n="btn_export"></button>
+          <label class="check small-note"><input type="checkbox" id="export-secrets"> <span data-i18n="export_secrets"></span></label>
+          <input type="file" id="import-file" accept=".json" hidden>
+        </div>
+
+        <div class="grid2">
+          <label><span data-i18n="f_name"></span><input id="p-name" type="text"></label>
+          <label><span data-i18n="f_adapter"></span>
+            <select id="p-adapter">
+              <option value="openai" data-i18n="adapter_openai"></option>
+              <option value="custom" data-i18n="adapter_custom"></option>
+            </select>
+          </label>
+          <label><span data-i18n="f_base_url"></span><input id="p-baseurl" type="text" data-i18n-ph="f_base_url_ph" dir="ltr"></label>
+          <label><span data-i18n="f_model"></span>
+            <span class="inline-row">
+              <input id="p-model" type="text" list="model-list" dir="ltr">
+              <button id="btn-fetch-models" class="btn small" type="button" data-i18n="btn_fetch_models"></button>
+            </span>
+            <datalist id="model-list"></datalist>
+          </label>
+          <label><span data-i18n="f_api_key"></span>
+            <span class="inline-row">
+              <input id="p-key" type="password" autocomplete="off" dir="ltr">
+              <button id="btn-key-vis" class="btn small" type="button">👁</button>
+            </span>
+          </label>
+          <label class="check-block">
+            <span class="check"><input type="checkbox" id="p-persist-key"> <span data-i18n="f_persist_key"></span></span>
+            <span class="small-note" data-i18n="key_session_note"></span>
+          </label>
+          <label class="span2"><span data-i18n="f_headers"></span><textarea id="p-headers" rows="2" dir="ltr"></textarea></label>
+          <label><span data-i18n="f_timeout"></span><input id="p-timeout" type="number" min="5" max="3600"></label>
+          <label><span data-i18n="f_retries"></span><input id="p-retries" type="number" min="0" max="10"></label>
+          <label><span data-i18n="f_temp"></span><input id="p-temp" type="number" min="0" max="2" step="0.05"></label>
+          <label><span data-i18n="f_max_tokens"></span><input id="p-maxtok" type="number" min="256" step="256"></label>
+          <label><span data-i18n="f_ctx"></span><input id="p-ctx" type="number" min="2048" step="1024"></label>
+          <label class="check-block"><span class="check"><input type="checkbox" id="p-stream"> <span data-i18n="f_stream"></span></span></label>
+          <label><span data-i18n="f_price_in"></span><input id="p-price-in" type="number" min="0" step="0.01"></label>
+          <label><span data-i18n="f_price_out"></span><input id="p-price-out" type="number" min="0" step="0.01"></label>
+        </div>
+
+        <fieldset id="custom-fields" hidden>
+          <label><span data-i18n="custom_req"></span><textarea id="c-template" rows="7" dir="ltr" spellcheck="false"></textarea></label>
+          <div class="grid2">
+            <label><span data-i18n="custom_text_path"></span><input id="c-textpath" type="text" dir="ltr"></label>
+            <label><span data-i18n="custom_in_path"></span><input id="c-inpath" type="text" dir="ltr"></label>
+            <label><span data-i18n="custom_out_path"></span><input id="c-outpath" type="text" dir="ltr"></label>
+          </div>
+        </fieldset>
+
+        <div class="test-row">
+          <button id="btn-test" class="btn" type="button" data-i18n="btn_test"></button>
+          <span id="test-result"></span>
+        </div>
+        <div id="diag-box" hidden>
+          <div class="diag-title" data-i18n="diag_title"></div>
+          <pre id="diag-text" dir="ltr"></pre>
+          <ul id="diag-hints"></ul>
+        </div>
+      </div>
+
+      <div id="tab-prompt" class="tab-pane" hidden>
+        <label class="field-label" data-i18n="prompt_editor"></label>
+        <textarea id="sp-editor" rows="18" dir="ltr" spellcheck="false"></textarea>
+        <div class="test-row">
+          <button id="btn-restore-prompt" class="btn small" type="button" data-i18n="btn_restore_prompt"></button>
+          <span id="prompt-msg"></span>
+        </div>
+      </div>
+
+      <div id="tab-output" class="tab-pane" hidden>
+        <div class="grid2">
+          <label><span data-i18n="out_palette"></span><select id="o-palette"></select></label>
+          <label><span data-i18n="out_lang"></span>
+            <select id="o-lang">
+              <option value="auto" data-i18n="out_lang_auto"></option>
+              <option value="he" data-i18n="out_lang_he"></option>
+              <option value="en" data-i18n="out_lang_en"></option>
+              <option value="ar" data-i18n="out_lang_ar"></option>
+            </select>
+          </label>
+          <label><span data-i18n="out_max_charts"></span><input id="o-maxcharts" type="number" min="0" max="8"></label>
+          <label class="check-block"><span class="check"><input type="checkbox" id="o-flow"> <span data-i18n="out_flow"></span></span></label>
+        </div>
+      </div>
+
+      <div id="tab-storage" class="tab-pane" hidden>
+        <div class="grid2">
+          <label><span data-i18n="f_cap"></span><input id="o-cap" type="number" min="1" max="100"></label>
+        </div>
+        <div class="warn-box">⚠️ <span data-i18n="sec_warning"></span></div>
+        <div class="danger-zone">
+          <span data-i18n="storage_clear"></span>
+          <button id="btn-clear-all" class="btn danger small" type="button" data-i18n="btn_clear_all"></button>
+        </div>
+      </div>
+
+    </div>
+    <div class="modal-foot">
+      <span id="settings-msg"></span>
+      <button id="btn-settings-save" class="btn primary" type="button" data-i18n="btn_save"></button>
+      <button class="btn modal-close" data-close="settings-modal" type="button" data-i18n="btn_close"></button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ Performance modal ============ -->
+<div id="metrics-modal" class="modal-overlay" hidden>
+  <div class="modal wide" role="dialog" aria-modal="true">
+    <div class="modal-head">
+      <h2 data-i18n="metrics_title"></h2>
+      <button class="chip-x modal-close" data-close="metrics-modal" type="button">✕</button>
+    </div>
+    <div class="tabs" id="metrics-tabs">
+      <button class="tab tab-on" data-tab="tab-runs" type="button" data-i18n="tab_runs"></button>
+      <button class="tab" data-tab="tab-dash" type="button" data-i18n="tab_dashboard"></button>
+      <span class="spacer"></span>
+      <select id="m-window">
+        <option value="0" data-i18n="win_all"></option>
+        <option value="86400000" data-i18n="win_24h"></option>
+        <option value="604800000" data-i18n="win_7d"></option>
+        <option value="2592000000" data-i18n="win_30d"></option>
+      </select>
+      <button id="btn-export-csv" class="btn small" type="button" data-i18n="btn_csv"></button>
+      <button id="btn-export-json" class="btn small" type="button" data-i18n="btn_json"></button>
+      <button id="btn-clear-hist" class="btn small danger" type="button" data-i18n="btn_clear_hist"></button>
+    </div>
+    <div class="modal-body">
+      <div id="tab-runs" class="tab-pane">
+        <div id="runs-empty" data-i18n="no_runs" hidden></div>
+        <table id="runs-table">
+          <thead><tr>
+            <th data-sort="ts" data-i18n="col_time"></th>
+            <th data-sort="source" data-i18n="col_source"></th>
+            <th data-sort="model" data-i18n="col_model"></th>
+            <th data-sort="status" data-i18n="col_status"></th>
+            <th data-sort="tokensIn" class="num" data-i18n="col_in"></th>
+            <th data-sort="tokensOut" class="num" data-i18n="col_out"></th>
+            <th data-sort="ttftMs" class="num" data-i18n="col_ttft"></th>
+            <th data-sort="latencyMs" class="num" data-i18n="col_latency"></th>
+            <th data-sort="tokPerSec" class="num" data-i18n="col_tps"></th>
+            <th data-sort="passesN" class="num" data-i18n="col_passes"></th>
+            <th data-sort="costEst" class="num" data-i18n="col_cost"></th>
+          </tr></thead>
+          <tbody id="runs-tbody"></tbody>
+        </table>
+      </div>
+      <div id="tab-dash" class="tab-pane" hidden>
+        <div id="agg-cards" class="agg-grid"></div>
+        <div class="dash-charts">
+          <div class="dash-chart"><h3 data-i18n="chart_tokens_time"></h3><canvas id="dash-tokens"></canvas></div>
+          <div class="dash-chart"><h3 data-i18n="chart_latency_dist"></h3><canvas id="dash-latency"></canvas></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast" hidden></div>
+
+<script>
+{{MAMMOTH_JS}}
+</script>
+<script>
+{{VENDOR_JS}}
+</script>
+<script>
+{{APP_JS}}
+</script>
+</body>
+</html>

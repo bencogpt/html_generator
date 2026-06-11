@@ -1,0 +1,192 @@
+/* IDG base.css — compact utility stylesheet injected into every generated
+   infographic ({{BASE_CSS}} token). Replicates the reference look (hero
+   gradient, white cards, accent-underlined section titles, KPI tiles,
+   entity cards, CSS-only flowchart) with no external dependencies. */
+
+:root {
+  --c-primary: #2563EB;
+  --c-secondary: #1E40AF;
+  --c-accent: #60A5FA;
+  --c-bg: #EFF6FF;
+  --c-surface: #FFFFFF;
+  --c-text: #1F2937;
+  --c-muted: #6B7280;
+  --c-grad-a: #1E3A8A;
+  --c-grad-b: #3B82F6;
+}
+
+* { box-sizing: border-box; }
+
+html, body { margin: 0; padding: 0; }
+
+body {
+  font-family: 'Heebo', system-ui, -apple-system, 'Segoe UI', Arial, sans-serif;
+  background: var(--c-bg);
+  color: var(--c-text);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+.container { max-width: 1100px; margin: 0 auto; padding: 0 20px 40px; }
+
+/* ---- Hero ---- */
+.hero {
+  background: linear-gradient(135deg, var(--c-grad-a), var(--c-grad-b));
+  color: #fff;
+  text-align: center;
+  padding: 56px 24px 48px;
+  margin-bottom: 32px;
+}
+.hero .icon { font-size: 52px; line-height: 1; display: block; margin-bottom: 12px; }
+.hero h1 { font-size: 38px; font-weight: 800; margin: 0 0 10px; letter-spacing: -0.5px; }
+.hero .subtitle { font-size: 18px; font-weight: 300; opacity: 0.92; max-width: 760px; margin: 0 auto; }
+
+/* ---- Cards & sections ---- */
+.card {
+  background: var(--c-surface);
+  border-radius: 16px;
+  box-shadow: 0 2px 12px rgba(15, 23, 42, 0.08);
+  padding: 28px 32px;
+  margin-bottom: 28px;
+}
+.section-title {
+  display: inline-block;
+  font-size: 24px;
+  font-weight: 800;
+  margin: 0 0 18px;
+  padding-bottom: 6px;
+  border-bottom: 4px solid var(--c-primary);
+}
+.subsection-title { font-size: 17px; font-weight: 600; margin: 18px 0 8px; color: var(--c-secondary); }
+.muted { color: var(--c-muted); }
+.accent { color: var(--c-primary); }
+
+/* ---- Grids ---- */
+.grid-2, .grid-3, .grid-4 { display: grid; gap: 20px; }
+.grid-2 { grid-template-columns: repeat(2, 1fr); }
+.grid-3 { grid-template-columns: repeat(3, 1fr); }
+.grid-4 { grid-template-columns: repeat(4, 1fr); }
+@media (max-width: 860px) {
+  .grid-3, .grid-4 { grid-template-columns: repeat(2, 1fr); }
+  .hero h1 { font-size: 28px; }
+}
+@media (max-width: 560px) {
+  .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; }
+}
+
+/* ---- KPI tiles ---- */
+.kpi {
+  background: var(--c-bg);
+  border-radius: 14px;
+  padding: 20px 16px;
+  text-align: center;
+  border-top: 4px solid var(--c-primary);
+}
+.kpi .value { font-size: 34px; font-weight: 800; color: var(--c-primary); line-height: 1.15; }
+.kpi .label { font-size: 13.5px; color: var(--c-muted); margin-top: 4px; }
+
+/* ---- Entity cards ---- */
+.entity-card {
+  background: var(--c-surface);
+  border-radius: 14px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-top: 5px solid var(--c-primary);
+  padding: 20px;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+.entity-card:hover { transform: translateY(-4px); box-shadow: 0 10px 24px rgba(15, 23, 42, 0.14); }
+.entity-card h3 { margin: 0 0 8px; font-size: 18px; font-weight: 700; }
+.entity-card ul { margin: 8px 0 0; padding-inline-start: 18px; font-size: 14px; }
+.entity-card.alt { border-top-color: var(--c-accent); }
+
+/* ---- Charts ---- */
+.chart-box { position: relative; height: 320px; max-width: 640px; margin: 0 auto; }
+.chart-box.small { height: 240px; }
+
+/* ---- Badges & pills ---- */
+.badge {
+  display: inline-block;
+  background: var(--c-primary);
+  color: #fff;
+  border-radius: 999px;
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 3px 12px;
+}
+.pill {
+  display: inline-block;
+  background: var(--c-bg);
+  color: var(--c-secondary);
+  border: 1.5px solid var(--c-accent);
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 5px 16px;
+  margin: 3px;
+}
+
+/* ---- Tables ---- */
+.data-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.data-table th {
+  background: var(--c-secondary);
+  color: #fff;
+  font-weight: 600;
+  padding: 10px 12px;
+  text-align: start;
+}
+.data-table td { padding: 9px 12px; border-bottom: 1px solid rgba(15, 23, 42, 0.08); }
+.data-table tr:nth-child(even) td { background: var(--c-bg); }
+
+/* ---- CSS-only flowchart ---- */
+.flow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  justify-content: center;
+  gap: 0;
+  background: linear-gradient(135deg, #0F172A, #1E293B);
+  border-radius: 16px;
+  padding: 32px 20px;
+}
+.flow-step {
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid var(--c-accent);
+  color: #E2E8F0;
+  border-radius: 12px;
+  padding: 14px 18px;
+  min-width: 130px;
+  max-width: 220px;
+  text-align: center;
+  font-size: 14px;
+  align-self: center;
+}
+.flow-step .step-title { font-weight: 700; color: #fff; display: block; margin-bottom: 4px; }
+.flow-arrow {
+  align-self: center;
+  color: var(--c-accent);
+  font-size: 22px;
+  font-weight: 800;
+  padding: 0 12px;
+  user-select: none;
+}
+[dir="rtl"] .flow-arrow::after { content: "←"; }
+[dir="ltr"] .flow-arrow::after { content: "→"; }
+@media (max-width: 700px) {
+  .flow { flex-direction: column; }
+  .flow-arrow { transform: rotate(90deg); padding: 6px 0; }
+  [dir="rtl"] .flow-arrow { transform: rotate(-90deg); }
+}
+
+/* ---- Progress / comparison bars ---- */
+.hbar { background: var(--c-bg); border-radius: 999px; height: 14px; overflow: hidden; margin: 6px 0 14px; }
+.hbar > span { display: block; height: 100%; background: linear-gradient(90deg, var(--c-primary), var(--c-accent)); border-radius: 999px; }
+
+/* ---- Footer ---- */
+.footer {
+  text-align: center;
+  font-size: 13px;
+  color: var(--c-muted);
+  padding: 26px 16px 34px;
+  border-top: 1px solid rgba(15, 23, 42, 0.1);
+  margin-top: 36px;
+}

@@ -1,0 +1,20 @@
+{
+  "name": "infographic-generator",
+  "version": "1.0.0",
+  "description": "Offline single-file generator that turns documents (DOCX/TXT/MD) into self-contained interactive HTML infographics via an internal OpenAI-compatible LLM endpoint",
+  "private": true,
+  "scripts": {
+    "build": "node tools/build.js",
+    "test": "node tools/test.js",
+    "e2e": "node tools/build.js && node tools/e2e.js",
+    "screenshots": "node tools/screenshots.js"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "chart.js": "4.4.0",
+    "mammoth": "1.8.0"
+  },
+  "devDependencies": {
+    "playwright": "^1.56.1"
+  }
+}
