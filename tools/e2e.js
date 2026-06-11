@@ -189,6 +189,15 @@ const server = http.createServer((req, res) => {
   }, null, { timeout: 10000 });
   console.log('✓ Chart.js renders inside sandboxed iframe');
 
+  // regression: the preview iframe must fill the result pane, not collapse
+  // to its min-height (percentage-height vs indefinite ancestor bug)
+  const fill = await page.evaluate(() => ({
+    wrap: document.getElementById('frame-wrap').getBoundingClientRect().height,
+    frame: document.getElementById('result-frame').getBoundingClientRect().height,
+  }));
+  assert.ok(fill.frame >= fill.wrap - 4, `iframe fills pane: ${fill.frame} vs ${fill.wrap}`);
+  console.log('✓ preview iframe fills the result pane');
+
   // metrics record (FR-40, acceptance #4): status=repaired, exact server usage
   const runs = await page.evaluate(() => JSON.parse(localStorage.getItem('idg.metrics.v1')));
   const run = runs[runs.length - 1];
