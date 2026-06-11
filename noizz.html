@@ -1,0 +1,1597 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NOIZZ — ניהול תכנון האקתון</title>
+<style>
+  :root {
+    --bg: #f4f6fa;
+    --surface: #ffffff;
+    --border: #e2e8f0;
+    --text: #1e293b;
+    --muted: #64748b;
+    --primary: #4f46e5;
+    --primary-dark: #4338ca;
+    --danger: #dc2626;
+    --warning: #ea580c;
+    --success: #16a34a;
+    --radius: 10px;
+    --shadow: 0 1px 3px rgba(15, 23, 42, .08), 0 1px 2px rgba(15, 23, 42, .06);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 15px;
+    line-height: 1.5;
+  }
+  button { font-family: inherit; font-size: inherit; cursor: pointer; }
+  input, select, textarea { font-family: inherit; font-size: inherit; color: inherit; }
+
+  /* ===== Top navigation ===== */
+  .topbar {
+    position: sticky; top: 0; z-index: 50;
+    background: #1e1b4b;
+    color: #fff;
+    display: flex; align-items: center; gap: 8px;
+    padding: 0 16px;
+    height: 56px;
+    box-shadow: 0 2px 8px rgba(0,0,0,.25);
+    flex-wrap: wrap;
+  }
+  .brand { font-size: 21px; font-weight: 800; letter-spacing: 1px; margin-inline-end: 12px; }
+  .brand span { color: #a5b4fc; }
+  .nav-links { display: flex; gap: 2px; flex-wrap: wrap; }
+  .nav-links button {
+    background: transparent; border: none; color: #c7d2fe;
+    padding: 8px 12px; border-radius: 8px; font-size: 14px;
+  }
+  .nav-links button:hover { background: rgba(255,255,255,.1); color: #fff; }
+  .nav-links button.active { background: var(--primary); color: #fff; font-weight: 600; }
+  .topbar-spacer { flex: 1; }
+  .topbar select {
+    background: rgba(255,255,255,.12); color: #fff; border: 1px solid rgba(255,255,255,.25);
+    border-radius: 8px; padding: 6px 8px; font-size: 13px; max-width: 170px;
+  }
+  .topbar select option { color: #1e293b; }
+  .btn-new-task {
+    background: var(--primary); color: #fff; border: none;
+    padding: 8px 14px; border-radius: 8px; font-weight: 700; font-size: 14px;
+  }
+  .btn-new-task:hover { background: var(--primary-dark); }
+
+  main { max-width: 1280px; margin: 0 auto; padding: 20px 16px 60px; }
+  .view { display: none; }
+  .view.active { display: block; }
+  .view-title { font-size: 22px; font-weight: 800; margin-bottom: 16px; }
+  .view-title small { font-size: 14px; font-weight: 400; color: var(--muted); margin-inline-start: 8px; }
+
+  /* ===== Generic UI ===== */
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 16px; }
+  .btn {
+    border: 1px solid var(--border); background: var(--surface); color: var(--text);
+    padding: 7px 14px; border-radius: 8px; font-size: 14px;
+  }
+  .btn:hover { background: #f1f5f9; }
+  .btn-primary { background: var(--primary); border-color: var(--primary); color: #fff; font-weight: 600; }
+  .btn-primary:hover { background: var(--primary-dark); }
+  .btn-danger { background: #fff; border-color: #fecaca; color: var(--danger); }
+  .btn-danger:hover { background: #fef2f2; }
+  .btn-sm { padding: 3px 9px; font-size: 13px; border-radius: 6px; }
+  .field { margin-bottom: 12px; }
+  .field label { display: block; font-size: 13px; font-weight: 600; color: var(--muted); margin-bottom: 4px; }
+  .field input[type=text], .field input[type=date], .field input[type=time], .field input[type=url],
+  .field select, .field textarea {
+    width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; background: #fff;
+  }
+  .field textarea { resize: vertical; min-height: 70px; }
+  .field input:focus, .field select:focus, .field textarea:focus { outline: 2px solid #c7d2fe; border-color: var(--primary); }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .req::after { content: " *"; color: var(--danger); }
+  .empty-state { text-align: center; color: var(--muted); padding: 36px 12px; font-size: 14px; }
+
+  .badge { display: inline-block; padding: 1px 8px; border-radius: 99px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+  .badge-prio-high { background: #fee2e2; color: #b91c1c; }
+  .badge-prio-medium { background: #fef3c7; color: #92400e; }
+  .badge-prio-low { background: #dcfce7; color: #166534; }
+  .badge-deadline { background: #f1f5f9; color: #475569; }
+  .badge-deadline.soon { background: #ffedd5; color: #c2410c; }
+  .badge-deadline.overdue { background: #fee2e2; color: #b91c1c; }
+  .cat-chip { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: var(--muted); }
+  .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; flex: none; }
+
+  .banner { border-radius: var(--radius); padding: 10px 14px; margin-bottom: 14px; font-size: 14px; display: flex; align-items: center; gap: 8px; }
+  .banner-danger { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+  .banner-info { background: #e0e7ff; color: #3730a3; border: 1px solid #c7d2fe; }
+  .banner .banner-action { margin-inline-start: auto; }
+
+  /* ===== Dashboard ===== */
+  .stat-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; margin-bottom: 16px; }
+  .stat { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; text-align: center; box-shadow: var(--shadow); }
+  .stat .num { font-size: 28px; font-weight: 800; }
+  .stat .lbl { font-size: 13px; color: var(--muted); }
+  .stat.alert .num { color: var(--danger); }
+  .stat.alert { border-color: #fecaca; background: #fff5f5; }
+  .dash-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .dash-grid h3 { font-size: 15px; margin-bottom: 10px; }
+  .countdown-hero { text-align: center; padding: 18px; margin-bottom: 16px; }
+  .countdown-hero .big { font-size: 36px; font-weight: 800; color: var(--primary); }
+  .countdown-hero .sub { color: var(--muted); font-size: 14px; }
+  .progress-row { margin-bottom: 10px; }
+  .progress-row .pr-head { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 3px; }
+  .progress-track { background: #e2e8f0; border-radius: 99px; height: 8px; overflow: hidden; }
+  .progress-fill { height: 100%; border-radius: 99px; }
+  .urgent-item, .load-item { display: flex; align-items: center; gap: 8px; padding: 7px 4px; border-bottom: 1px solid var(--border); font-size: 14px; cursor: pointer; }
+  .urgent-item:last-child, .load-item:last-child { border-bottom: none; }
+  .urgent-item:hover { background: #f8fafc; }
+  .load-item { cursor: default; }
+  .load-item .load-count { margin-inline-start: auto; font-weight: 700; }
+
+  /* ===== Kanban ===== */
+  .filters { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; align-items: center; }
+  .filters select, .filters input[type=search] {
+    padding: 7px 10px; border: 1px solid var(--border); border-radius: 8px; background: #fff; font-size: 14px;
+  }
+  .filters input[type=search] { min-width: 200px; flex: 1; max-width: 320px; }
+  .kanban { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; align-items: start; }
+  .kanban-col { background: #eef1f6; border-radius: var(--radius); padding: 10px; min-height: 240px; }
+  .kanban-col.dragover { outline: 2px dashed var(--primary); outline-offset: -2px; background: #e0e7ff; }
+  .kanban-col h3 { font-size: 14px; font-weight: 700; padding: 2px 6px 10px; display: flex; justify-content: space-between; color: var(--muted); }
+  .task-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+    padding: 10px 12px; margin-bottom: 8px; box-shadow: var(--shadow); cursor: grab;
+    border-right: 4px solid transparent;
+  }
+  .task-card:hover { border-color: #c7d2fe; }
+  .task-card.dragging { opacity: .5; }
+  .task-card.overdue-card { border-right-color: var(--danger); }
+  .task-card .tc-title { font-weight: 600; font-size: 14px; margin-bottom: 5px; }
+  .task-card .tc-meta { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 12px; }
+  .assignee-pill { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: var(--muted); }
+  .avatar { width: 18px; height: 18px; border-radius: 50%; color: #fff; font-size: 10px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; flex: none; }
+
+  /* ===== Calendar ===== */
+  .cal-header { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+  .cal-header h3 { font-size: 18px; min-width: 160px; text-align: center; }
+  .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+  .cal-dow { background: #eef1f6; padding: 6px 4px; text-align: center; font-size: 13px; font-weight: 700; color: var(--muted); }
+  .cal-cell { background: var(--surface); min-height: 96px; padding: 5px; font-size: 12px; cursor: pointer; }
+  .cal-cell:hover { background: #f8fafc; }
+  .cal-cell.other { background: #f4f6fa; cursor: default; }
+  .cal-cell .daynum { font-weight: 700; font-size: 12px; color: var(--muted); margin-bottom: 3px; display: inline-block; }
+  .cal-cell.today .daynum { background: var(--primary); color: #fff; border-radius: 99px; padding: 0 7px; }
+  .cal-task { border-radius: 5px; padding: 1px 6px; margin-bottom: 2px; color: #fff; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
+  .cal-task.done-task { opacity: .5; text-decoration: line-through; }
+  .cal-task.overdue-task { outline: 2px solid var(--danger); outline-offset: -1px; }
+  .cal-milestone { background: #1e1b4b; color: #fde68a; border-radius: 5px; padding: 1px 6px; margin-bottom: 2px; font-size: 11px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  /* ===== Timeline ===== */
+  .timeline-wrap { position: relative; height: 150px; margin: 30px 10px 10px; }
+  .timeline-axis { position: absolute; top: 70px; right: 0; left: 0; height: 4px; background: #c7d2fe; border-radius: 99px; }
+  .tl-point { position: absolute; top: 0; width: 150px; margin-right: -75px; text-align: center; }
+  .tl-point .tl-dot { width: 16px; height: 16px; border-radius: 50%; background: var(--primary); border: 3px solid #fff; box-shadow: 0 0 0 2px var(--primary); margin: 64px auto 6px; }
+  .tl-point.past .tl-dot { background: #94a3b8; box-shadow: 0 0 0 2px #94a3b8; }
+  .tl-point .tl-name { font-weight: 700; font-size: 13px; line-height: 1.25; }
+  .tl-point .tl-date { font-size: 12px; color: var(--muted); }
+  .tl-point .tl-count { font-size: 12px; font-weight: 700; color: var(--primary); }
+  .tl-point.past .tl-count { color: var(--muted); font-weight: 400; }
+  .tl-today { position: absolute; top: 40px; width: 2px; margin-right: -1px; height: 56px; background: var(--danger); }
+  .tl-today::before { content: "היום"; position: absolute; top: -20px; right: 50%; transform: translateX(50%); font-size: 11px; font-weight: 700; color: var(--danger); white-space: nowrap; }
+  .ms-list { margin-top: 26px; display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+  .ms-card .ms-name { font-weight: 700; }
+  .ms-card .ms-desc { font-size: 13px; color: var(--muted); margin-top: 4px; }
+  .ms-card .ms-count { font-size: 13px; font-weight: 700; margin-top: 6px; }
+  .ms-card .ms-count.future { color: var(--primary); }
+  .ms-card .ms-count.today { color: var(--success); }
+  .ms-card .ms-count.past { color: var(--muted); font-weight: 400; }
+
+  /* ===== My tasks ===== */
+  .mt-group { margin-bottom: 20px; }
+  .mt-group h3 { font-size: 15px; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+  .mt-group h3 .gdot { width: 10px; height: 10px; border-radius: 50%; }
+  .mt-task { display: flex; align-items: center; gap: 10px; padding: 9px 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 6px; cursor: pointer; }
+  .mt-task:hover { border-color: #c7d2fe; }
+  .mt-task .mt-title { font-weight: 600; flex: 1; }
+  .mt-task.done .mt-title { text-decoration: line-through; color: var(--muted); }
+
+  /* ===== Manage ===== */
+  .manage-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; align-items: start; }
+  .manage-grid h3 { font-size: 16px; margin-bottom: 12px; }
+  .item-row { display: flex; align-items: center; gap: 8px; padding: 8px 4px; border-bottom: 1px solid var(--border); font-size: 14px; }
+  .item-row:last-child { border-bottom: none; }
+  .item-row .ir-main { flex: 1; min-width: 0; }
+  .item-row .ir-sub { font-size: 12px; color: var(--muted); }
+  .inline-form { background: #f8fafc; border: 1px solid var(--border); border-radius: 8px; padding: 12px; margin-bottom: 12px; }
+  .inline-form .form-row { display: flex; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+  .inline-form input[type=text], .inline-form input[type=date] { flex: 1; min-width: 120px; padding: 7px 9px; border: 1px solid var(--border); border-radius: 7px; }
+  .inline-form input[type=color] { width: 42px; height: 36px; padding: 2px; border: 1px solid var(--border); border-radius: 7px; background: #fff; cursor: pointer; }
+
+  /* ===== Settings ===== */
+  .settings-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 16px; align-items: start; }
+  .settings-grid h3 { font-size: 16px; margin-bottom: 10px; }
+  .settings-grid p.hint { font-size: 13px; color: var(--muted); margin-bottom: 10px; }
+  .note-box { background: #fffbeb; border: 1px solid #fde68a; color: #92400e; border-radius: 8px; padding: 10px 12px; font-size: 13px; margin: 10px 0; }
+
+  /* ===== Modal ===== */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(15, 23, 42, .55); z-index: 100;
+    display: none; align-items: flex-start; justify-content: center; padding: 30px 14px; overflow-y: auto;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal { background: var(--surface); border-radius: 14px; width: 100%; max-width: 620px; box-shadow: 0 20px 50px rgba(0,0,0,.3); }
+  .modal-sm { max-width: 440px; }
+  .modal-head { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; border-bottom: 1px solid var(--border); }
+  .modal-head h3 { font-size: 17px; }
+  .modal-close { background: none; border: none; font-size: 22px; line-height: 1; color: var(--muted); padding: 2px 6px; }
+  .modal-body { padding: 18px; }
+  .modal-foot { display: flex; gap: 8px; padding: 14px 18px; border-top: 1px solid var(--border); }
+  .modal-foot .grow { flex: 1; }
+  .checklist-item { display: flex; align-items: center; gap: 8px; padding: 4px 0; }
+  .checklist-item input[type=checkbox] { width: 16px; height: 16px; }
+  .checklist-item .cl-text { flex: 1; font-size: 14px; }
+  .checklist-item .cl-text.done { text-decoration: line-through; color: var(--muted); }
+  .add-line { display: flex; gap: 8px; margin-top: 6px; }
+  .add-line input[type=text], .add-line textarea { flex: 1; padding: 7px 9px; border: 1px solid var(--border); border-radius: 7px; }
+  .comment { background: #f8fafc; border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; margin-bottom: 6px; font-size: 13px; }
+  .comment .c-meta { font-size: 11px; color: var(--muted); margin-bottom: 2px; }
+  .task-meta-line { font-size: 11px; color: var(--muted); margin-top: 8px; }
+
+  @media (max-width: 900px) {
+    .dash-grid, .grid-2 { grid-template-columns: 1fr; }
+    .kanban { grid-template-columns: 1fr; }
+    .cal-cell { min-height: 64px; }
+    .tl-point { width: 90px; margin-right: -45px; }
+  }
+</style>
+</head>
+<body>
+
+<nav class="topbar">
+  <div class="brand">NO<span>IZZ</span></div>
+  <div class="nav-links" id="nav-links">
+    <button data-view="dashboard">דשבורד</button>
+    <button data-view="kanban">לוח קנבן</button>
+    <button data-view="calendar">לוח שנה</button>
+    <button data-view="timeline">ציר זמן</button>
+    <button data-view="mytasks">המשימות שלי</button>
+    <button data-view="manage">ניהול</button>
+    <button data-view="settings">הגדרות</button>
+  </div>
+  <div class="topbar-spacer"></div>
+  <select id="active-user-select" title="המשתמש הפעיל" aria-label="המשתמש הפעיל"></select>
+  <button class="btn-new-task" id="btn-new-task">+ משימה חדשה</button>
+</nav>
+
+<main>
+  <!-- ===== Dashboard ===== -->
+  <section class="view" id="view-dashboard">
+    <div id="dash-banners"></div>
+    <h2 class="view-title">דשבורד</h2>
+    <div id="dash-content"></div>
+  </section>
+
+  <!-- ===== Kanban ===== -->
+  <section class="view" id="view-kanban">
+    <h2 class="view-title">לוח קנבן</h2>
+    <div class="filters">
+      <input type="search" id="kb-search" placeholder="חיפוש חופשי...">
+      <select id="kb-filter-category"></select>
+      <select id="kb-filter-assignee"></select>
+      <select id="kb-filter-priority">
+        <option value="">כל העדיפויות</option>
+        <option value="high">גבוהה</option>
+        <option value="medium">בינונית</option>
+        <option value="low">נמוכה</option>
+      </select>
+      <button class="btn btn-sm" id="kb-clear-filters">נקה סינון</button>
+    </div>
+    <div class="kanban" id="kanban-board"></div>
+  </section>
+
+  <!-- ===== Calendar ===== -->
+  <section class="view" id="view-calendar">
+    <h2 class="view-title">לוח שנה <small>לחיצה על יום ריק יוצרת משימה חדשה</small></h2>
+    <div class="cal-header">
+      <button class="btn" id="cal-prev" aria-label="חודש קודם">→ קודם</button>
+      <h3 id="cal-title"></h3>
+      <button class="btn" id="cal-next" aria-label="חודש הבא">הבא ←</button>
+      <button class="btn" id="cal-today">היום</button>
+    </div>
+    <div class="cal-grid" id="cal-grid"></div>
+  </section>
+
+  <!-- ===== Timeline ===== -->
+  <section class="view" id="view-timeline">
+    <h2 class="view-title">ציר זמן ואבני דרך</h2>
+    <div id="timeline-content"></div>
+  </section>
+
+  <!-- ===== My tasks ===== -->
+  <section class="view" id="view-mytasks">
+    <h2 class="view-title">המשימות שלי</h2>
+    <div id="mytasks-content"></div>
+  </section>
+
+  <!-- ===== Manage ===== -->
+  <section class="view" id="view-manage">
+    <h2 class="view-title">ניהול</h2>
+    <div class="manage-grid">
+      <div class="card">
+        <h3>אנשי צוות</h3>
+        <div class="inline-form" id="member-form">
+          <div class="form-row">
+            <input type="text" id="mf-name" placeholder="שם מלא *">
+            <input type="text" id="mf-role" placeholder="תפקיד (למשל: לוגיסטיקה)">
+          </div>
+          <div class="form-row">
+            <input type="color" id="mf-color" value="#4f46e5" title="צבע מזהה">
+            <input type="text" id="mf-exchange" placeholder="שם חשבון ארגוני (אופציונלי)">
+          </div>
+          <div class="form-row" style="margin-bottom:0">
+            <button class="btn btn-primary btn-sm" id="mf-save">הוספה</button>
+            <button class="btn btn-sm" id="mf-cancel" style="display:none">ביטול</button>
+          </div>
+        </div>
+        <div id="members-list"></div>
+      </div>
+
+      <div class="card">
+        <h3>קטגוריות</h3>
+        <div class="inline-form" id="category-form">
+          <div class="form-row">
+            <input type="text" id="cf-name" placeholder="שם קטגוריה *">
+            <input type="color" id="cf-color" value="#0ea5e9" title="צבע קטגוריה">
+          </div>
+          <div class="form-row" style="margin-bottom:0">
+            <button class="btn btn-primary btn-sm" id="cf-save">הוספה</button>
+            <button class="btn btn-sm" id="cf-cancel" style="display:none">ביטול</button>
+          </div>
+        </div>
+        <div id="categories-list"></div>
+      </div>
+
+      <div class="card">
+        <h3>אבני דרך</h3>
+        <div class="inline-form" id="milestone-form">
+          <div class="form-row">
+            <input type="text" id="msf-name" placeholder="שם אבן הדרך *">
+            <input type="date" id="msf-date" title="תאריך">
+          </div>
+          <div class="form-row">
+            <input type="text" id="msf-desc" placeholder="תיאור קצר">
+          </div>
+          <div class="form-row" style="margin-bottom:0">
+            <button class="btn btn-primary btn-sm" id="msf-save">הוספה</button>
+            <button class="btn btn-sm" id="msf-cancel" style="display:none">ביטול</button>
+          </div>
+        </div>
+        <div id="milestones-list"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Settings ===== -->
+  <section class="view" id="view-settings">
+    <h2 class="view-title">הגדרות</h2>
+    <div class="settings-grid">
+      <div class="card">
+        <h3>משתמש פעיל</h3>
+        <p class="hint">המשתמש הפעיל משמש לתצוגת "המשימות שלי" ולתיעוד מי כתב הערות. אין סיסמאות ואין התחברות.</p>
+        <div class="field">
+          <select id="settings-user-select"></select>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>גיבוי ושחזור</h3>
+        <p class="hint">הנתונים נשמרים בדפדפן של מחשב זה בלבד. ניקוי נתוני אתרים בדפדפן ימחק את כל המידע — מומלץ לגבות באופן קבוע.</p>
+        <p class="hint" id="last-backup-line"></p>
+        <div style="display:flex; gap:8px; flex-wrap:wrap">
+          <button class="btn btn-primary" id="btn-export-json">ייצוא גיבוי (JSON)</button>
+          <button class="btn" id="btn-import-json">ייבוא מגיבוי...</button>
+          <input type="file" id="import-file" accept=".json,application/json" style="display:none">
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Outlook ארגוני / יומן</h3>
+        <p class="hint"><strong>רמה א' (זמינה תמיד):</strong> ייצוא קובץ ‎.ics‎ סטנדרטי של כל הדד-ליינים ואבני הדרך, לייבוא ידני ליומן Outlook.</p>
+        <button class="btn btn-primary" id="btn-export-ics">ייצוא יומן (ICS)</button>
+        <div class="note-box">
+          <strong>רמה ב' (מותנית):</strong> חיבור ישיר לשרת Exchange‏ (EWS) צפוי להיחסם ממגבלות CORS ואימות ארגוני, וימומש רק בכפוף לאישור IT. הכתובת נשמרת כאן לשימוש עתידי.
+        </div>
+        <div class="field">
+          <label for="exchange-url">כתובת שרת Exchange פנימי (EWS)</label>
+          <input type="url" id="exchange-url" placeholder="https://exchange.company.local/EWS/Exchange.asmx">
+        </div>
+        <button class="btn" id="btn-save-exchange">שמירת כתובת שרת</button>
+      </div>
+
+      <div class="card">
+        <h3>אודות</h3>
+        <p class="hint">NOIZZ — מערכת לניהול תכנון האקתון. גרסה 1.0.<br>
+        קובץ HTML יחיד, ללא שרת וללא תלות באינטרנט. כל הנתונים נשמרים מקומית (LocalStorage).</p>
+        <button class="btn btn-danger" id="btn-reset-all">איפוס כל הנתונים...</button>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- ===== Task modal ===== -->
+<div class="modal-overlay" id="task-modal">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="task-modal-title">
+    <div class="modal-head">
+      <h3 id="task-modal-title">משימה חדשה</h3>
+      <button class="modal-close" data-close="task-modal" aria-label="סגירה">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="field">
+        <label class="req" for="tm-title">כותרת</label>
+        <input type="text" id="tm-title" maxlength="140">
+      </div>
+      <div class="field">
+        <label for="tm-desc">תיאור</label>
+        <textarea id="tm-desc"></textarea>
+      </div>
+      <div class="grid-2">
+        <div class="field">
+          <label class="req" for="tm-category">קטגוריה</label>
+          <select id="tm-category"></select>
+        </div>
+        <div class="field">
+          <label for="tm-assignee">אחראי</label>
+          <select id="tm-assignee"></select>
+        </div>
+      </div>
+      <div class="grid-2">
+        <div class="field">
+          <label for="tm-deadline">דד-ליין</label>
+          <input type="date" id="tm-deadline">
+        </div>
+        <div class="field">
+          <label for="tm-time">שעה (אופציונלי)</label>
+          <input type="time" id="tm-time">
+        </div>
+      </div>
+      <div class="grid-2">
+        <div class="field">
+          <label class="req" for="tm-priority">עדיפות</label>
+          <select id="tm-priority">
+            <option value="high">גבוהה</option>
+            <option value="medium" selected>בינונית</option>
+            <option value="low">נמוכה</option>
+          </select>
+        </div>
+        <div class="field">
+          <label class="req" for="tm-status">סטטוס</label>
+          <select id="tm-status">
+            <option value="todo">לביצוע</option>
+            <option value="inprogress">בתהליך</option>
+            <option value="done">הושלם</option>
+          </select>
+        </div>
+      </div>
+      <div class="field">
+        <label>צ'קליסט</label>
+        <div id="tm-checklist"></div>
+        <div class="add-line">
+          <input type="text" id="tm-checklist-input" placeholder="תת-משימה חדשה...">
+          <button class="btn btn-sm" id="tm-checklist-add">הוספה</button>
+        </div>
+      </div>
+      <div class="field">
+        <label>הערות</label>
+        <div id="tm-comments"></div>
+        <div class="add-line">
+          <input type="text" id="tm-comment-input" placeholder="הערה חדשה...">
+          <button class="btn btn-sm" id="tm-comment-add">הוספה</button>
+        </div>
+      </div>
+      <div class="task-meta-line" id="tm-meta"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-primary" id="tm-save">שמירה</button>
+      <button class="btn" data-close="task-modal">ביטול</button>
+      <div class="grow"></div>
+      <button class="btn btn-danger" id="tm-delete" style="display:none">מחיקה</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Reassign modal (member deletion) ===== -->
+<div class="modal-overlay" id="reassign-modal">
+  <div class="modal modal-sm" role="dialog" aria-modal="true">
+    <div class="modal-head">
+      <h3>מחיקת איש צוות</h3>
+      <button class="modal-close" data-close="reassign-modal" aria-label="סגירה">×</button>
+    </div>
+    <div class="modal-body">
+      <p id="reassign-text" style="margin-bottom:12px"></p>
+      <div class="field">
+        <label for="reassign-select">העברת המשימות אל:</label>
+        <select id="reassign-select"></select>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-danger" id="reassign-confirm">העברה ומחיקה</button>
+      <button class="btn" data-close="reassign-modal">ביטול</button>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+
+/* =========================================================
+   Data layer — LocalStorage under key "noizz-data"
+   ========================================================= */
+const STORAGE_KEY = "noizz-data";
+
+const PRIORITY_LABELS = { high: "גבוהה", medium: "בינונית", low: "נמוכה" };
+const STATUS_LABELS = { todo: "לביצוע", inprogress: "בתהליך", done: "הושלם" };
+const STATUSES = ["todo", "inprogress", "done"];
+const MONTH_NAMES = ["ינואר","פברואר","מרץ","אפריל","מאי","יוני","יולי","אוגוסט","ספטמבר","אוקטובר","נובמבר","דצמבר"];
+const DOW_NAMES = ["ראשון","שני","שלישי","רביעי","חמישי","שישי","שבת"];
+
+function uid() {
+  return Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 8);
+}
+
+function defaultData() {
+  return {
+    team: [],
+    categories: [
+      { id: uid(), name: "לוגיסטיקה", color: "#0ea5e9" },
+      { id: uid(), name: "שיווק ופרסום", color: "#ec4899" },
+      { id: uid(), name: "טכנולוגיה", color: "#8b5cf6" },
+      { id: uid(), name: "תוכן והרצאות", color: "#f59e0b" },
+      { id: uid(), name: "כיבוד", color: "#10b981" },
+      { id: uid(), name: "פרסים", color: "#eab308" },
+      { id: uid(), name: "רישום משתתפים", color: "#06b6d4" },
+      { id: uid(), name: "כללי", color: "#64748b" }
+    ],
+    tasks: [],
+    milestones: [],
+    settings: {
+      activeUserId: null,
+      lastBackupDate: null,
+      exchangeServerUrl: ""
+    }
+  };
+}
+
+function loadData() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const d = JSON.parse(raw);
+      if (d && typeof d === "object") {
+        // Defensive completion of missing parts (old/partial backups)
+        const base = defaultData();
+        d.team = Array.isArray(d.team) ? d.team : [];
+        d.categories = Array.isArray(d.categories) && d.categories.length ? d.categories : base.categories;
+        d.tasks = Array.isArray(d.tasks) ? d.tasks : [];
+        d.milestones = Array.isArray(d.milestones) ? d.milestones : [];
+        d.settings = Object.assign(base.settings, d.settings || {});
+        return d;
+      }
+    }
+  } catch (e) { /* corrupted storage — start fresh */ }
+  return defaultData();
+}
+
+let data = loadData();
+
+function persist() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+}
+
+/* =========================================================
+   Helpers
+   ========================================================= */
+function escapeHtml(s) {
+  return String(s == null ? "" : s)
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
+
+function pad2(n) { return String(n).padStart(2, "0"); }
+
+function todayStr() {
+  const d = new Date();
+  return d.getFullYear() + "-" + pad2(d.getMonth() + 1) + "-" + pad2(d.getDate());
+}
+
+function fmtDate(iso) {
+  if (!iso) return "";
+  const p = iso.split("-");
+  if (p.length !== 3) return iso;
+  return p[2] + "/" + p[1] + "/" + p[0];
+}
+
+function fmtDateTime(ts) {
+  if (!ts) return "";
+  const d = new Date(ts);
+  return pad2(d.getDate()) + "/" + pad2(d.getMonth() + 1) + "/" + d.getFullYear() +
+    " " + pad2(d.getHours()) + ":" + pad2(d.getMinutes());
+}
+
+/* Days from today until the given ISO date (negative = past) */
+function daysUntil(iso) {
+  const t = new Date(todayStr() + "T00:00:00");
+  const d = new Date(iso + "T00:00:00");
+  return Math.round((d - t) / 86400000);
+}
+
+function getMember(id) { return data.team.find(m => m.id === id) || null; }
+function getCategory(id) { return data.categories.find(c => c.id === id) || null; }
+function getTask(id) { return data.tasks.find(t => t.id === id) || null; }
+
+function isOverdue(task) {
+  if (task.status === "done" || !task.deadline) return false;
+  if (task.deadlineTime) {
+    return new Date(task.deadline + "T" + task.deadlineTime) < new Date();
+  }
+  return daysUntil(task.deadline) < 0;
+}
+
+function isDueSoon(task) {
+  if (task.status === "done" || !task.deadline || isOverdue(task)) return false;
+  const d = daysUntil(task.deadline);
+  return d >= 0 && d <= 3;
+}
+
+function memberInitials(name) {
+  return name.trim().split(/\s+/).slice(0, 2).map(w => w[0] || "").join("");
+}
+
+function deadlineBadge(task) {
+  if (!task.deadline) return "";
+  let cls = "badge-deadline", txt = fmtDate(task.deadline);
+  if (task.deadlineTime) txt += " " + task.deadlineTime;
+  if (isOverdue(task)) { cls += " overdue"; txt = "⚠ באיחור · " + txt; }
+  else if (isDueSoon(task)) { cls += " soon"; txt = "בקרוב · " + txt; }
+  return '<span class="badge ' + cls + '">' + escapeHtml(txt) + '</span>';
+}
+
+function assigneePill(task) {
+  const m = getMember(task.assigneeId);
+  if (!m) return '<span class="assignee-pill">ללא אחראי</span>';
+  return '<span class="assignee-pill"><span class="avatar" style="background:' + escapeHtml(m.color) + '">' +
+    escapeHtml(memberInitials(m.name)) + '</span>' + escapeHtml(m.name) + '</span>';
+}
+
+function categoryChip(task) {
+  const c = getCategory(task.categoryId);
+  if (!c) return "";
+  return '<span class="cat-chip"><span class="dot" style="background:' + escapeHtml(c.color) + '"></span>' +
+    escapeHtml(c.name) + '</span>';
+}
+
+function downloadFile(filename, content, mime) {
+  const blob = new Blob([content], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+}
+
+/* =========================================================
+   Navigation
+   ========================================================= */
+let currentView = "dashboard";
+
+function switchView(name) {
+  currentView = name;
+  document.querySelectorAll(".view").forEach(v => v.classList.remove("active"));
+  document.getElementById("view-" + name).classList.add("active");
+  document.querySelectorAll("#nav-links button").forEach(b =>
+    b.classList.toggle("active", b.dataset.view === name));
+  renderCurrentView();
+}
+
+function renderCurrentView() {
+  switch (currentView) {
+    case "dashboard": renderDashboard(); break;
+    case "kanban": renderKanban(); break;
+    case "calendar": renderCalendar(); break;
+    case "timeline": renderTimeline(); break;
+    case "mytasks": renderMyTasks(); break;
+    case "manage": renderManage(); break;
+    case "settings": renderSettings(); break;
+  }
+}
+
+/* Re-render after any data change */
+function refresh() {
+  persist();
+  renderUserSelects();
+  renderCurrentView();
+}
+
+document.querySelectorAll("#nav-links button").forEach(b =>
+  b.addEventListener("click", () => switchView(b.dataset.view)));
+
+/* =========================================================
+   Active user
+   ========================================================= */
+function renderUserSelects() {
+  const sels = [document.getElementById("active-user-select"), document.getElementById("settings-user-select")];
+  sels.forEach(sel => {
+    if (!sel) return;
+    let html = '<option value="">— בחירת משתמש פעיל —</option>';
+    data.team.forEach(m => {
+      html += '<option value="' + m.id + '"' + (data.settings.activeUserId === m.id ? " selected" : "") + '>' +
+        escapeHtml(m.name) + '</option>';
+    });
+    sel.innerHTML = html;
+  });
+}
+
+["active-user-select", "settings-user-select"].forEach(id => {
+  document.getElementById(id).addEventListener("change", e => {
+    data.settings.activeUserId = e.target.value || null;
+    refresh();
+  });
+});
+
+/* =========================================================
+   Task modal
+   ========================================================= */
+let editingTaskId = null;
+let editChecklist = [];
+let editComments = [];
+
+function openModal(id) { document.getElementById(id).classList.add("open"); }
+function closeModal(id) { document.getElementById(id).classList.remove("open"); }
+
+document.querySelectorAll("[data-close]").forEach(b =>
+  b.addEventListener("click", () => closeModal(b.dataset.close)));
+document.querySelectorAll(".modal-overlay").forEach(ov =>
+  ov.addEventListener("mousedown", e => { if (e.target === ov) ov.classList.remove("open"); }));
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape") document.querySelectorAll(".modal-overlay.open").forEach(ov => ov.classList.remove("open"));
+});
+
+function fillTaskModalSelects() {
+  const catSel = document.getElementById("tm-category");
+  catSel.innerHTML = data.categories.map(c =>
+    '<option value="' + c.id + '">' + escapeHtml(c.name) + '</option>').join("");
+  const asSel = document.getElementById("tm-assignee");
+  asSel.innerHTML = '<option value="">ללא אחראי</option>' + data.team.map(m =>
+    '<option value="' + m.id + '">' + escapeHtml(m.name) + '</option>').join("");
+}
+
+function openTaskModal(taskId, presetDeadline, presetStatus) {
+  editingTaskId = taskId || null;
+  fillTaskModalSelects();
+  const t = taskId ? getTask(taskId) : null;
+
+  document.getElementById("task-modal-title").textContent = t ? "עריכת משימה" : "משימה חדשה";
+  document.getElementById("tm-title").value = t ? t.title : "";
+  document.getElementById("tm-desc").value = t ? (t.description || "") : "";
+  document.getElementById("tm-category").value = t ? t.categoryId :
+    (data.categories[0] ? data.categories[0].id : "");
+  document.getElementById("tm-assignee").value = t ? (t.assigneeId || "") : (data.settings.activeUserId || "");
+  document.getElementById("tm-deadline").value = t ? (t.deadline || "") : (presetDeadline || "");
+  document.getElementById("tm-time").value = t ? (t.deadlineTime || "") : "";
+  document.getElementById("tm-priority").value = t ? t.priority : "medium";
+  document.getElementById("tm-status").value = t ? t.status : (presetStatus || "todo");
+  document.getElementById("tm-checklist-input").value = "";
+  document.getElementById("tm-comment-input").value = "";
+  document.getElementById("tm-delete").style.display = t ? "" : "none";
+  document.getElementById("tm-meta").textContent = t
+    ? "נוצרה: " + fmtDateTime(t.createdAt) + " · עדכון אחרון: " + fmtDateTime(t.updatedAt)
+    : "";
+
+  editChecklist = t ? t.checklist.map(i => ({ text: i.text, done: !!i.done })) : [];
+  editComments = t ? t.comments.map(c => ({ text: c.text, authorId: c.authorId, date: c.date })) : [];
+  renderModalChecklist();
+  renderModalComments();
+  openModal("task-modal");
+  document.getElementById("tm-title").focus();
+}
+
+function renderModalChecklist() {
+  const box = document.getElementById("tm-checklist");
+  if (!editChecklist.length) {
+    box.innerHTML = '<div class="ir-sub" style="color:var(--muted);font-size:13px">אין תתי-משימות</div>';
+    return;
+  }
+  box.innerHTML = editChecklist.map((item, i) =>
+    '<div class="checklist-item">' +
+      '<input type="checkbox" data-cl-i="' + i + '"' + (item.done ? " checked" : "") + '>' +
+      '<span class="cl-text' + (item.done ? " done" : "") + '">' + escapeHtml(item.text) + '</span>' +
+      '<button class="btn btn-sm btn-danger" data-cl-del="' + i + '">✕</button>' +
+    '</div>').join("");
+  box.querySelectorAll("[data-cl-i]").forEach(cb =>
+    cb.addEventListener("change", () => {
+      editChecklist[+cb.dataset.clI].done = cb.checked;
+      renderModalChecklist();
+    }));
+  box.querySelectorAll("[data-cl-del]").forEach(btn =>
+    btn.addEventListener("click", () => {
+      editChecklist.splice(+btn.dataset.clDel, 1);
+      renderModalChecklist();
+    }));
+}
+
+function renderModalComments() {
+  const box = document.getElementById("tm-comments");
+  if (!editComments.length) {
+    box.innerHTML = '<div class="ir-sub" style="color:var(--muted);font-size:13px">אין הערות</div>';
+    return;
+  }
+  box.innerHTML = editComments.map(c => {
+    const author = getMember(c.authorId);
+    return '<div class="comment"><div class="c-meta">' +
+      escapeHtml(author ? author.name : "לא ידוע") + " · " + fmtDateTime(c.date) +
+      '</div>' + escapeHtml(c.text) + '</div>';
+  }).join("");
+}
+
+function addChecklistItem() {
+  const inp = document.getElementById("tm-checklist-input");
+  const text = inp.value.trim();
+  if (!text) return;
+  editChecklist.push({ text, done: false });
+  inp.value = "";
+  renderModalChecklist();
+  inp.focus();
+}
+document.getElementById("tm-checklist-add").addEventListener("click", addChecklistItem);
+document.getElementById("tm-checklist-input").addEventListener("keydown", e => {
+  if (e.key === "Enter") { e.preventDefault(); addChecklistItem(); }
+});
+
+function addComment() {
+  const inp = document.getElementById("tm-comment-input");
+  const text = inp.value.trim();
+  if (!text) return;
+  if (!data.settings.activeUserId) {
+    alert("יש לבחור משתמש פעיל (בסרגל העליון) לפני הוספת הערה.");
+    return;
+  }
+  editComments.push({ text, authorId: data.settings.activeUserId, date: Date.now() });
+  inp.value = "";
+  renderModalComments();
+  inp.focus();
+}
+document.getElementById("tm-comment-add").addEventListener("click", addComment);
+document.getElementById("tm-comment-input").addEventListener("keydown", e => {
+  if (e.key === "Enter") { e.preventDefault(); addComment(); }
+});
+
+document.getElementById("tm-save").addEventListener("click", () => {
+  const title = document.getElementById("tm-title").value.trim();
+  if (!title) { alert("כותרת היא שדה חובה."); document.getElementById("tm-title").focus(); return; }
+  const deadline = document.getElementById("tm-deadline").value || null;
+  const deadlineTime = deadline ? (document.getElementById("tm-time").value || null) : null;
+  const now = Date.now();
+
+  const fields = {
+    title,
+    description: document.getElementById("tm-desc").value.trim(),
+    categoryId: document.getElementById("tm-category").value,
+    assigneeId: document.getElementById("tm-assignee").value || null,
+    deadline, deadlineTime,
+    priority: document.getElementById("tm-priority").value,
+    status: document.getElementById("tm-status").value,
+    checklist: editChecklist,
+    comments: editComments,
+    updatedAt: now
+  };
+
+  if (editingTaskId) {
+    Object.assign(getTask(editingTaskId), fields);
+  } else {
+    data.tasks.push(Object.assign({ id: uid(), createdAt: now }, fields));
+  }
+  closeModal("task-modal");
+  refresh();
+});
+
+document.getElementById("tm-delete").addEventListener("click", () => {
+  if (!editingTaskId) return;
+  if (!confirm("האם אתה בטוח שברצונך למחוק את המשימה? פעולה זו אינה ניתנת לביטול.")) return;
+  data.tasks = data.tasks.filter(t => t.id !== editingTaskId);
+  closeModal("task-modal");
+  refresh();
+});
+
+document.getElementById("btn-new-task").addEventListener("click", () => openTaskModal(null));
+
+/* =========================================================
+   Dashboard
+   ========================================================= */
+function backupOverdue() {
+  const last = data.settings.lastBackupDate;
+  if (!last) return data.tasks.length > 0 || data.team.length > 0;
+  return (Date.now() - last) / 86400000 > 7;
+}
+
+function renderDashboard() {
+  const tasks = data.tasks;
+  const overdue = tasks.filter(isOverdue);
+  const counts = {
+    total: tasks.length,
+    todo: tasks.filter(t => t.status === "todo").length,
+    inprogress: tasks.filter(t => t.status === "inprogress").length,
+    done: tasks.filter(t => t.status === "done").length,
+    overdue: overdue.length
+  };
+
+  /* Banners */
+  let banners = "";
+  if (counts.overdue > 0) {
+    banners += '<div class="banner banner-danger">⚠️ יש <strong>' + counts.overdue +
+      '</strong> משימות באיחור! <button class="btn btn-sm banner-action" onclick="switchView(\'kanban\')">ללוח הקנבן</button></div>';
+  }
+  if (backupOverdue()) {
+    banners += '<div class="banner banner-info">💾 עברו יותר מ-7 ימים מהגיבוי האחרון. מומלץ לייצא גיבוי. ' +
+      '<button class="btn btn-sm banner-action" onclick="exportBackup()">גיבוי עכשיו</button></div>';
+  }
+  document.getElementById("dash-banners").innerHTML = banners;
+
+  /* Countdown to next milestone */
+  const future = data.milestones.filter(m => daysUntil(m.date) >= 0)
+    .sort((a, b) => a.date.localeCompare(b.date));
+  let hero = "";
+  if (future.length) {
+    const ms = future[0];
+    const d = daysUntil(ms.date);
+    hero = '<div class="card countdown-hero">' +
+      '<div class="sub">אבן הדרך הקרובה: <strong>' + escapeHtml(ms.name) + '</strong> (' + fmtDate(ms.date) + ')</div>' +
+      '<div class="big">' + (d === 0 ? "היום! 🎉" : d + " ימים נותרו") + '</div>' +
+      '</div>';
+  }
+
+  /* Stats */
+  let html = hero +
+    '<div class="stat-row">' +
+      stat(counts.total, 'סה"כ משימות') +
+      stat(counts.todo, "לביצוע") +
+      stat(counts.inprogress, "בתהליך") +
+      stat(counts.done, "הושלמו") +
+      '<div class="stat alert"><div class="num">' + counts.overdue + '</div><div class="lbl">באיחור</div></div>' +
+    '</div>';
+
+  /* Category progress */
+  let progress = "";
+  data.categories.forEach(c => {
+    const catTasks = tasks.filter(t => t.categoryId === c.id);
+    if (!catTasks.length) return;
+    const done = catTasks.filter(t => t.status === "done").length;
+    const pct = Math.round(done / catTasks.length * 100);
+    progress += '<div class="progress-row"><div class="pr-head"><span class="cat-chip"><span class="dot" style="background:' +
+      escapeHtml(c.color) + '"></span>' + escapeHtml(c.name) + '</span><span>' + done + "/" + catTasks.length +
+      " (" + pct + '%)</span></div><div class="progress-track"><div class="progress-fill" style="width:' + pct +
+      "%;background:" + escapeHtml(c.color) + '"></div></div></div>';
+  });
+  if (!progress) progress = '<div class="empty-state">אין עדיין משימות</div>';
+
+  /* Workload per person */
+  let load = "";
+  data.team.forEach(m => {
+    const open = tasks.filter(t => t.assigneeId === m.id && t.status !== "done").length;
+    load += '<div class="load-item"><span class="avatar" style="background:' + escapeHtml(m.color) + '">' +
+      escapeHtml(memberInitials(m.name)) + '</span>' + escapeHtml(m.name) +
+      '<span class="load-count">' + open + ' פתוחות</span></div>';
+  });
+  if (!load) load = '<div class="empty-state">אין אנשי צוות. ניתן להוסיף במסך הניהול.</div>';
+
+  /* Urgent now */
+  const urgent = tasks.filter(t => isOverdue(t) || isDueSoon(t))
+    .sort((a, b) => (a.deadline || "").localeCompare(b.deadline || ""));
+  let urgentHtml = urgent.map(t =>
+    '<div class="urgent-item" onclick="openTaskModal(\'' + t.id + '\')">' +
+    deadlineBadge(t) + '<span style="font-weight:600">' + escapeHtml(t.title) + '</span>' +
+    '<span style="margin-inline-start:auto">' + assigneePill(t) + '</span></div>').join("");
+  if (!urgentHtml) urgentHtml = '<div class="empty-state">אין משימות דחופות 🎉</div>';
+
+  html += '<div class="dash-grid">' +
+    '<div class="card"><h3>🔥 דחוף עכשיו (באיחור או ב-3 הימים הקרובים)</h3>' + urgentHtml + '</div>' +
+    '<div class="card"><h3>📊 התקדמות לפי קטגוריה</h3>' + progress + '</div>' +
+    '<div class="card"><h3>👥 עומס לפי אנשים</h3>' + load + '</div>' +
+    '</div>';
+
+  document.getElementById("dash-content").innerHTML = html;
+
+  function stat(num, lbl) {
+    return '<div class="stat"><div class="num">' + num + '</div><div class="lbl">' + lbl + '</div></div>';
+  }
+}
+
+/* =========================================================
+   Kanban
+   ========================================================= */
+const kbFilters = { search: "", category: "", assignee: "", priority: "" };
+
+function renderKanbanFilters() {
+  const catSel = document.getElementById("kb-filter-category");
+  catSel.innerHTML = '<option value="">כל הקטגוריות</option>' + data.categories.map(c =>
+    '<option value="' + c.id + '"' + (kbFilters.category === c.id ? " selected" : "") + '>' +
+    escapeHtml(c.name) + '</option>').join("");
+  const asSel = document.getElementById("kb-filter-assignee");
+  asSel.innerHTML = '<option value="">כל האחראים</option><option value="__none__"' +
+    (kbFilters.assignee === "__none__" ? " selected" : "") + '>ללא אחראי</option>' +
+    data.team.map(m => '<option value="' + m.id + '"' + (kbFilters.assignee === m.id ? " selected" : "") + '>' +
+      escapeHtml(m.name) + '</option>').join("");
+  document.getElementById("kb-filter-priority").value = kbFilters.priority;
+  document.getElementById("kb-search").value = kbFilters.search;
+}
+
+function taskMatchesFilters(t) {
+  if (kbFilters.category && t.categoryId !== kbFilters.category) return false;
+  if (kbFilters.assignee === "__none__" && t.assigneeId) return false;
+  if (kbFilters.assignee && kbFilters.assignee !== "__none__" && t.assigneeId !== kbFilters.assignee) return false;
+  if (kbFilters.priority && t.priority !== kbFilters.priority) return false;
+  if (kbFilters.search) {
+    const q = kbFilters.search.toLowerCase();
+    const hay = (t.title + " " + (t.description || "")).toLowerCase();
+    if (!hay.includes(q)) return false;
+  }
+  return true;
+}
+
+function taskCardHtml(t) {
+  const c = getCategory(t.categoryId);
+  return '<div class="task-card' + (isOverdue(t) ? " overdue-card" : "") +
+    '" draggable="true" data-task-id="' + t.id + '" style="border-right-color:' +
+    escapeHtml(c ? c.color : "#cbd5e1") + '">' +
+    '<div class="tc-title">' + escapeHtml(t.title) + '</div>' +
+    '<div class="tc-meta">' + categoryChip(t) +
+    '<span class="badge badge-prio-' + t.priority + '">' + PRIORITY_LABELS[t.priority] + '</span>' +
+    deadlineBadge(t) + assigneePill(t) + '</div></div>';
+}
+
+function renderKanban() {
+  renderKanbanFilters();
+  const board = document.getElementById("kanban-board");
+  const prioOrder = { high: 0, medium: 1, low: 2 };
+  let html = "";
+  STATUSES.forEach(st => {
+    const tasks = data.tasks.filter(t => t.status === st && taskMatchesFilters(t))
+      .sort((a, b) => (a.deadline || "9999").localeCompare(b.deadline || "9999") ||
+        prioOrder[a.priority] - prioOrder[b.priority]);
+    html += '<div class="kanban-col" data-status="' + st + '"><h3><span>' + STATUS_LABELS[st] +
+      '</span><span>' + tasks.length + '</span></h3>' +
+      tasks.map(taskCardHtml).join("") +
+      (tasks.length ? "" : '<div class="empty-state" style="padding:18px">אין משימות</div>') +
+      '</div>';
+  });
+  board.innerHTML = html;
+
+  /* Card events */
+  board.querySelectorAll(".task-card").forEach(card => {
+    card.addEventListener("click", () => openTaskModal(card.dataset.taskId));
+    card.addEventListener("dragstart", e => {
+      e.dataTransfer.setData("text/plain", card.dataset.taskId);
+      e.dataTransfer.effectAllowed = "move";
+      card.classList.add("dragging");
+    });
+    card.addEventListener("dragend", () => card.classList.remove("dragging"));
+  });
+
+  /* Column drop targets */
+  board.querySelectorAll(".kanban-col").forEach(col => {
+    col.addEventListener("dragover", e => { e.preventDefault(); col.classList.add("dragover"); });
+    col.addEventListener("dragleave", () => col.classList.remove("dragover"));
+    col.addEventListener("drop", e => {
+      e.preventDefault();
+      col.classList.remove("dragover");
+      const id = e.dataTransfer.getData("text/plain");
+      const t = getTask(id);
+      if (t && t.status !== col.dataset.status) {
+        t.status = col.dataset.status;
+        t.updatedAt = Date.now();
+        refresh();
+      }
+    });
+  });
+}
+
+document.getElementById("kb-search").addEventListener("input", e => {
+  kbFilters.search = e.target.value;
+  renderKanban();
+  document.getElementById("kb-search").focus();
+  const v = document.getElementById("kb-search").value;
+  document.getElementById("kb-search").setSelectionRange(v.length, v.length);
+});
+document.getElementById("kb-filter-category").addEventListener("change", e => { kbFilters.category = e.target.value; renderKanban(); });
+document.getElementById("kb-filter-assignee").addEventListener("change", e => { kbFilters.assignee = e.target.value; renderKanban(); });
+document.getElementById("kb-filter-priority").addEventListener("change", e => { kbFilters.priority = e.target.value; renderKanban(); });
+document.getElementById("kb-clear-filters").addEventListener("click", () => {
+  kbFilters.search = kbFilters.category = kbFilters.assignee = kbFilters.priority = "";
+  renderKanban();
+});
+
+/* =========================================================
+   Calendar
+   ========================================================= */
+let calYear = new Date().getFullYear();
+let calMonth = new Date().getMonth(); // 0-based
+
+function renderCalendar() {
+  document.getElementById("cal-title").textContent = MONTH_NAMES[calMonth] + " " + calYear;
+  const grid = document.getElementById("cal-grid");
+  const firstDow = new Date(calYear, calMonth, 1).getDay(); // 0 = Sunday
+  const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+  const today = todayStr();
+
+  let html = DOW_NAMES.map(d => '<div class="cal-dow">' + d + '</div>').join("");
+  for (let i = 0; i < firstDow; i++) html += '<div class="cal-cell other"></div>';
+
+  for (let day = 1; day <= daysInMonth; day++) {
+    const iso = calYear + "-" + pad2(calMonth + 1) + "-" + pad2(day);
+    const dayTasks = data.tasks.filter(t => t.deadline === iso);
+    const dayMs = data.milestones.filter(m => m.date === iso);
+    let inner = '<span class="daynum">' + day + '</span>';
+    dayMs.forEach(m => {
+      inner += '<div class="cal-milestone" title="' + escapeHtml(m.name) + '">★ ' + escapeHtml(m.name) + '</div>';
+    });
+    dayTasks.forEach(t => {
+      const c = getCategory(t.categoryId);
+      inner += '<div class="cal-task' + (t.status === "done" ? " done-task" : "") +
+        (isOverdue(t) ? " overdue-task" : "") + '" data-task-id="' + t.id +
+        '" style="background:' + escapeHtml(c ? c.color : "#64748b") + '" title="' + escapeHtml(t.title) + '">' +
+        escapeHtml(t.title) + '</div>';
+    });
+    html += '<div class="cal-cell' + (iso === today ? " today" : "") + '" data-date="' + iso + '">' + inner + '</div>';
+  }
+  /* trailing cells to complete the last row */
+  const totalCells = firstDow + daysInMonth;
+  const trailing = (7 - (totalCells % 7)) % 7;
+  for (let i = 0; i < trailing; i++) html += '<div class="cal-cell other"></div>';
+
+  grid.innerHTML = html;
+
+  grid.querySelectorAll(".cal-task").forEach(el =>
+    el.addEventListener("click", e => { e.stopPropagation(); openTaskModal(el.dataset.taskId); }));
+  grid.querySelectorAll(".cal-cell[data-date]").forEach(cell =>
+    cell.addEventListener("click", () => openTaskModal(null, cell.dataset.date)));
+}
+
+document.getElementById("cal-prev").addEventListener("click", () => {
+  calMonth--; if (calMonth < 0) { calMonth = 11; calYear--; }
+  renderCalendar();
+});
+document.getElementById("cal-next").addEventListener("click", () => {
+  calMonth++; if (calMonth > 11) { calMonth = 0; calYear++; }
+  renderCalendar();
+});
+document.getElementById("cal-today").addEventListener("click", () => {
+  calYear = new Date().getFullYear(); calMonth = new Date().getMonth();
+  renderCalendar();
+});
+
+/* =========================================================
+   Timeline & milestones
+   ========================================================= */
+function renderTimeline() {
+  const box = document.getElementById("timeline-content");
+  const ms = data.milestones.slice().sort((a, b) => a.date.localeCompare(b.date));
+  if (!ms.length) {
+    box.innerHTML = '<div class="card"><div class="empty-state">אין אבני דרך עדיין.<br>' +
+      'ניתן להוסיף אבני דרך (פתיחת הרשמה, יום האירוע, הכרזת זוכים...) במסך הניהול.<br><br>' +
+      '<button class="btn btn-primary" onclick="switchView(\'manage\')">למסך הניהול</button></div></div>';
+    return;
+  }
+
+  const today = todayStr();
+  const dates = ms.map(m => m.date).concat([today]).sort();
+  const min = new Date(dates[0] + "T00:00:00").getTime();
+  const max = new Date(dates[dates.length - 1] + "T00:00:00").getTime();
+  const span = Math.max(max - min, 1);
+  const pct = iso => ((new Date(iso + "T00:00:00").getTime() - min) / span * 92 + 4);
+
+  let axis = '<div class="timeline-axis"></div>' +
+    '<div class="tl-today" style="right:' + pct(today).toFixed(2) + '%"></div>';
+  ms.forEach(m => {
+    const d = daysUntil(m.date);
+    const cnt = d > 0 ? "בעוד " + d + " ימים" : (d === 0 ? "היום!" : "עבר");
+    axis += '<div class="tl-point' + (d < 0 ? " past" : "") + '" style="right:' + pct(m.date).toFixed(2) + '%">' +
+      '<div class="tl-name">' + escapeHtml(m.name) + '</div>' +
+      '<div class="tl-date">' + fmtDate(m.date) + '</div>' +
+      '<div class="tl-count">' + cnt + '</div>' +
+      '<div class="tl-dot"></div></div>';
+  });
+
+  let cards = "";
+  ms.forEach(m => {
+    const d = daysUntil(m.date);
+    const cls = d > 0 ? "future" : (d === 0 ? "today" : "past");
+    const cnt = d > 0 ? "⏳ נותרו " + d + " ימים" : (d === 0 ? "🎉 היום!" : "✓ עבר לפני " + (-d) + " ימים");
+    cards += '<div class="card ms-card"><div class="ms-name">★ ' + escapeHtml(m.name) + '</div>' +
+      '<div class="ir-sub">' + fmtDate(m.date) + '</div>' +
+      (m.description ? '<div class="ms-desc">' + escapeHtml(m.description) + '</div>' : "") +
+      '<div class="ms-count ' + cls + '">' + cnt + '</div></div>';
+  });
+
+  box.innerHTML = '<div class="card" style="overflow-x:auto"><div class="timeline-wrap" style="min-width:560px">' +
+    axis + '</div></div><div class="ms-list">' + cards + '</div>';
+}
+
+/* =========================================================
+   My tasks
+   ========================================================= */
+function renderMyTasks() {
+  const box = document.getElementById("mytasks-content");
+  const me = data.settings.activeUserId;
+  if (!me) {
+    box.innerHTML = '<div class="card"><div class="empty-state">יש לבחור משתמש פעיל בסרגל העליון כדי לראות את המשימות שלך.</div></div>';
+    return;
+  }
+  const mine = data.tasks.filter(t => t.assigneeId === me)
+    .sort((a, b) => (a.deadline || "9999").localeCompare(b.deadline || "9999"));
+  if (!mine.length) {
+    box.innerHTML = '<div class="card"><div class="empty-state">אין משימות שהוקצו לך. 🎉</div></div>';
+    return;
+  }
+
+  const groups = { overdue: [], week: [], later: [], done: [] };
+  mine.forEach(t => {
+    if (t.status === "done") groups.done.push(t);
+    else if (isOverdue(t)) groups.overdue.push(t);
+    else if (t.deadline && daysUntil(t.deadline) <= 7) groups.week.push(t);
+    else groups.later.push(t);
+  });
+
+  const meta = [
+    ["overdue", "באיחור", "var(--danger)"],
+    ["week", "השבוע", "var(--warning)"],
+    ["later", "בהמשך", "var(--primary)"],
+    ["done", "הושלמו", "var(--success)"]
+  ];
+  let html = "";
+  meta.forEach(([key, label, color]) => {
+    if (!groups[key].length) return;
+    html += '<div class="mt-group"><h3><span class="gdot" style="background:' + color + '"></span>' +
+      label + " (" + groups[key].length + ')</h3>' +
+      groups[key].map(t =>
+        '<div class="mt-task' + (t.status === "done" ? " done" : "") + '" onclick="openTaskModal(\'' + t.id + '\')">' +
+        '<span class="mt-title">' + escapeHtml(t.title) + '</span>' +
+        categoryChip(t) +
+        '<span class="badge badge-prio-' + t.priority + '">' + PRIORITY_LABELS[t.priority] + '</span>' +
+        deadlineBadge(t) + '</div>').join("") +
+      '</div>';
+  });
+  box.innerHTML = html;
+}
+
+/* =========================================================
+   Manage — team / categories / milestones
+   ========================================================= */
+let editingMemberId = null;
+let editingCategoryId = null;
+let editingMilestoneId = null;
+
+function renderManage() {
+  /* Team */
+  const ml = document.getElementById("members-list");
+  ml.innerHTML = data.team.length ? data.team.map(m => {
+    const open = data.tasks.filter(t => t.assigneeId === m.id && t.status !== "done").length;
+    return '<div class="item-row"><span class="avatar" style="background:' + escapeHtml(m.color) + '">' +
+      escapeHtml(memberInitials(m.name)) + '</span>' +
+      '<div class="ir-main"><div>' + escapeHtml(m.name) + '</div><div class="ir-sub">' +
+      escapeHtml(m.role || "ללא תפקיד") + " · " + open + " משימות פתוחות" +
+      (m.exchangeAccount ? " · " + escapeHtml(m.exchangeAccount) : "") + '</div></div>' +
+      '<button class="btn btn-sm" data-edit-member="' + m.id + '">עריכה</button>' +
+      '<button class="btn btn-sm btn-danger" data-del-member="' + m.id + '">מחיקה</button></div>';
+  }).join("") : '<div class="empty-state">אין אנשי צוות עדיין</div>';
+
+  ml.querySelectorAll("[data-edit-member]").forEach(b => b.addEventListener("click", () => {
+    const m = getMember(b.dataset.editMember);
+    editingMemberId = m.id;
+    document.getElementById("mf-name").value = m.name;
+    document.getElementById("mf-role").value = m.role || "";
+    document.getElementById("mf-color").value = m.color;
+    document.getElementById("mf-exchange").value = m.exchangeAccount || "";
+    document.getElementById("mf-save").textContent = "עדכון";
+    document.getElementById("mf-cancel").style.display = "";
+    document.getElementById("mf-name").focus();
+  }));
+  ml.querySelectorAll("[data-del-member]").forEach(b =>
+    b.addEventListener("click", () => deleteMember(b.dataset.delMember)));
+
+  /* Categories */
+  const cl = document.getElementById("categories-list");
+  cl.innerHTML = data.categories.map(c => {
+    const n = data.tasks.filter(t => t.categoryId === c.id).length;
+    return '<div class="item-row"><span class="dot" style="background:' + escapeHtml(c.color) + ';width:14px;height:14px"></span>' +
+      '<div class="ir-main"><div>' + escapeHtml(c.name) + '</div><div class="ir-sub">' + n + ' משימות</div></div>' +
+      '<button class="btn btn-sm" data-edit-cat="' + c.id + '">עריכה</button>' +
+      '<button class="btn btn-sm btn-danger" data-del-cat="' + c.id + '">מחיקה</button></div>';
+  }).join("");
+
+  cl.querySelectorAll("[data-edit-cat]").forEach(b => b.addEventListener("click", () => {
+    const c = getCategory(b.dataset.editCat);
+    editingCategoryId = c.id;
+    document.getElementById("cf-name").value = c.name;
+    document.getElementById("cf-color").value = c.color;
+    document.getElementById("cf-save").textContent = "עדכון";
+    document.getElementById("cf-cancel").style.display = "";
+    document.getElementById("cf-name").focus();
+  }));
+  cl.querySelectorAll("[data-del-cat]").forEach(b =>
+    b.addEventListener("click", () => deleteCategory(b.dataset.delCat)));
+
+  /* Milestones */
+  const msl = document.getElementById("milestones-list");
+  const sorted = data.milestones.slice().sort((a, b) => a.date.localeCompare(b.date));
+  msl.innerHTML = sorted.length ? sorted.map(m =>
+    '<div class="item-row"><span>★</span>' +
+    '<div class="ir-main"><div>' + escapeHtml(m.name) + '</div><div class="ir-sub">' + fmtDate(m.date) +
+    (m.description ? " · " + escapeHtml(m.description) : "") + '</div></div>' +
+    '<button class="btn btn-sm" data-edit-ms="' + m.id + '">עריכה</button>' +
+    '<button class="btn btn-sm btn-danger" data-del-ms="' + m.id + '">מחיקה</button></div>').join("")
+    : '<div class="empty-state">אין אבני דרך עדיין</div>';
+
+  msl.querySelectorAll("[data-edit-ms]").forEach(b => b.addEventListener("click", () => {
+    const m = data.milestones.find(x => x.id === b.dataset.editMs);
+    editingMilestoneId = m.id;
+    document.getElementById("msf-name").value = m.name;
+    document.getElementById("msf-date").value = m.date;
+    document.getElementById("msf-desc").value = m.description || "";
+    document.getElementById("msf-save").textContent = "עדכון";
+    document.getElementById("msf-cancel").style.display = "";
+    document.getElementById("msf-name").focus();
+  }));
+  msl.querySelectorAll("[data-del-ms]").forEach(b => b.addEventListener("click", () => {
+    const m = data.milestones.find(x => x.id === b.dataset.delMs);
+    if (!confirm('האם אתה בטוח שברצונך למחוק את אבן הדרך "' + m.name + '"?')) return;
+    data.milestones = data.milestones.filter(x => x.id !== m.id);
+    refresh();
+  }));
+}
+
+function resetMemberForm() {
+  editingMemberId = null;
+  document.getElementById("mf-name").value = "";
+  document.getElementById("mf-role").value = "";
+  document.getElementById("mf-color").value = "#4f46e5";
+  document.getElementById("mf-exchange").value = "";
+  document.getElementById("mf-save").textContent = "הוספה";
+  document.getElementById("mf-cancel").style.display = "none";
+}
+document.getElementById("mf-cancel").addEventListener("click", resetMemberForm);
+document.getElementById("mf-save").addEventListener("click", () => {
+  const name = document.getElementById("mf-name").value.trim();
+  if (!name) { alert("שם מלא הוא שדה חובה."); return; }
+  const fields = {
+    name,
+    role: document.getElementById("mf-role").value.trim(),
+    color: document.getElementById("mf-color").value,
+    exchangeAccount: document.getElementById("mf-exchange").value.trim()
+  };
+  if (editingMemberId) Object.assign(getMember(editingMemberId), fields);
+  else data.team.push(Object.assign({ id: uid() }, fields));
+  resetMemberForm();
+  refresh();
+});
+
+let memberPendingDeletion = null;
+function deleteMember(id) {
+  const m = getMember(id);
+  const memberTasks = data.tasks.filter(t => t.assigneeId === id);
+  const openTasks = memberTasks.filter(t => t.status !== "done");
+  if (openTasks.length) {
+    /* Cannot delete with open tasks — offer reassignment */
+    memberPendingDeletion = id;
+    document.getElementById("reassign-text").innerHTML =
+      'לא ניתן למחוק את <strong>' + escapeHtml(m.name) + '</strong> — יש לו ' + openTasks.length +
+      ' משימות פתוחות. ניתן להעביר את כל המשימות שלו לאחר ואז למחוק:';
+    document.getElementById("reassign-select").innerHTML =
+      '<option value="">ללא אחראי</option>' +
+      data.team.filter(x => x.id !== id).map(x =>
+        '<option value="' + x.id + '">' + escapeHtml(x.name) + '</option>').join("");
+    openModal("reassign-modal");
+    return;
+  }
+  if (!confirm('האם אתה בטוח שברצונך למחוק את "' + m.name + '"?')) return;
+  removeMember(id, null, memberTasks.length > 0);
+}
+
+function removeMember(id, reassignTo, reassignDone) {
+  data.tasks.forEach(t => {
+    if (t.assigneeId === id) { t.assigneeId = reassignTo || null; t.updatedAt = Date.now(); }
+  });
+  data.team = data.team.filter(m => m.id !== id);
+  if (data.settings.activeUserId === id) data.settings.activeUserId = null;
+  if (editingMemberId === id) resetMemberForm();
+  refresh();
+}
+
+document.getElementById("reassign-confirm").addEventListener("click", () => {
+  if (!memberPendingDeletion) return;
+  removeMember(memberPendingDeletion, document.getElementById("reassign-select").value || null, true);
+  memberPendingDeletion = null;
+  closeModal("reassign-modal");
+});
+
+function resetCategoryForm() {
+  editingCategoryId = null;
+  document.getElementById("cf-name").value = "";
+  document.getElementById("cf-color").value = "#0ea5e9";
+  document.getElementById("cf-save").textContent = "הוספה";
+  document.getElementById("cf-cancel").style.display = "none";
+}
+document.getElementById("cf-cancel").addEventListener("click", resetCategoryForm);
+document.getElementById("cf-save").addEventListener("click", () => {
+  const name = document.getElementById("cf-name").value.trim();
+  if (!name) { alert("שם קטגוריה הוא שדה חובה."); return; }
+  const fields = { name, color: document.getElementById("cf-color").value };
+  if (editingCategoryId) Object.assign(getCategory(editingCategoryId), fields);
+  else data.categories.push(Object.assign({ id: uid() }, fields));
+  resetCategoryForm();
+  refresh();
+});
+
+function deleteCategory(id) {
+  const c = getCategory(id);
+  const catTasks = data.tasks.filter(t => t.categoryId === id);
+  if (data.categories.length === 1) { alert("חייבת להישאר לפחות קטגוריה אחת."); return; }
+  let fallback = null;
+  if (catTasks.length) {
+    fallback = data.categories.find(x => x.name === "כללי" && x.id !== id);
+    if (!fallback) {
+      fallback = { id: uid(), name: "כללי", color: "#64748b" };
+      data.categories.push(fallback);
+    }
+    if (!confirm('לקטגוריה "' + c.name + '" יש ' + catTasks.length +
+      ' משימות. הן יועברו לקטגוריה "כללי". להמשיך?')) return;
+    catTasks.forEach(t => { t.categoryId = fallback.id; t.updatedAt = Date.now(); });
+  } else if (!confirm('האם אתה בטוח שברצונך למחוק את הקטגוריה "' + c.name + '"?')) {
+    return;
+  }
+  data.categories = data.categories.filter(x => x.id !== id);
+  if (editingCategoryId === id) resetCategoryForm();
+  refresh();
+}
+
+function resetMilestoneForm() {
+  editingMilestoneId = null;
+  document.getElementById("msf-name").value = "";
+  document.getElementById("msf-date").value = "";
+  document.getElementById("msf-desc").value = "";
+  document.getElementById("msf-save").textContent = "הוספה";
+  document.getElementById("msf-cancel").style.display = "none";
+}
+document.getElementById("msf-cancel").addEventListener("click", resetMilestoneForm);
+document.getElementById("msf-save").addEventListener("click", () => {
+  const name = document.getElementById("msf-name").value.trim();
+  const date = document.getElementById("msf-date").value;
+  if (!name) { alert("שם אבן הדרך הוא שדה חובה."); return; }
+  if (!date) { alert("יש לבחור תאריך לאבן הדרך."); return; }
+  const fields = { name, date, description: document.getElementById("msf-desc").value.trim() };
+  if (editingMilestoneId) Object.assign(data.milestones.find(m => m.id === editingMilestoneId), fields);
+  else data.milestones.push(Object.assign({ id: uid() }, fields));
+  resetMilestoneForm();
+  refresh();
+});
+
+/* =========================================================
+   Settings — backup / restore / ICS / Exchange
+   ========================================================= */
+function renderSettings() {
+  const last = data.settings.lastBackupDate;
+  document.getElementById("last-backup-line").innerHTML = last
+    ? "גיבוי אחרון: <strong>" + fmtDateTime(last) + "</strong>" + (backupOverdue() ? ' <span style="color:var(--warning)">— עברו מעל 7 ימים, מומלץ לגבות!</span>' : "")
+    : '<span style="color:var(--warning)">טרם בוצע גיבוי.</span>';
+  document.getElementById("exchange-url").value = data.settings.exchangeServerUrl || "";
+}
+
+function exportBackup() {
+  data.settings.lastBackupDate = Date.now();
+  persist();
+  downloadFile("noizz-backup-" + todayStr() + ".json",
+    JSON.stringify(data, null, 2), "application/json");
+  renderUserSelects();
+  renderCurrentView();
+}
+document.getElementById("btn-export-json").addEventListener("click", exportBackup);
+
+document.getElementById("btn-import-json").addEventListener("click", () =>
+  document.getElementById("import-file").click());
+document.getElementById("import-file").addEventListener("change", e => {
+  const file = e.target.files[0];
+  e.target.value = "";
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const imported = JSON.parse(reader.result);
+      if (!imported || typeof imported !== "object" || !Array.isArray(imported.tasks)) {
+        alert("הקובץ אינו קובץ גיבוי תקין של NOIZZ.");
+        return;
+      }
+      if (!confirm("ייבוא הגיבוי ידרוס את כל הנתונים הקיימים במערכת. האם להמשיך?")) return;
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(imported));
+      data = loadData();
+      refresh();
+      alert("הגיבוי נטען בהצלחה.");
+    } catch (err) {
+      alert("שגיאה בקריאת הקובץ: " + err.message);
+    }
+  };
+  reader.readAsText(file);
+});
+
+document.getElementById("btn-save-exchange").addEventListener("click", () => {
+  data.settings.exchangeServerUrl = document.getElementById("exchange-url").value.trim();
+  persist();
+  alert("כתובת השרת נשמרה. החיבור הישיר ימומש בכפוף לאישור IT (רמה ב').");
+});
+
+document.getElementById("btn-reset-all").addEventListener("click", () => {
+  if (!confirm("פעולה זו תמחק את כל הנתונים במערכת לצמיתות. האם אתה בטוח?")) return;
+  if (!confirm("אישור אחרון: כל המשימות, אנשי הצוות ואבני הדרך יימחקו. להמשיך?")) return;
+  localStorage.removeItem(STORAGE_KEY);
+  data = defaultData();
+  refresh();
+});
+
+/* ----- ICS export (level A — always available) ----- */
+function icsEscape(s) {
+  return String(s || "").replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\r?\n/g, "\\n");
+}
+function icsDate(iso) { return iso.replace(/-/g, ""); }
+function icsStamp() {
+  const d = new Date();
+  return d.getUTCFullYear() + pad2(d.getUTCMonth() + 1) + pad2(d.getUTCDate()) + "T" +
+    pad2(d.getUTCHours()) + pad2(d.getUTCMinutes()) + pad2(d.getUTCSeconds()) + "Z";
+}
+
+document.getElementById("btn-export-ics").addEventListener("click", () => {
+  const stamp = icsStamp();
+  const lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//NOIZZ//Hackathon Planner//HE", "CALSCALE:GREGORIAN"];
+
+  data.milestones.forEach(m => {
+    lines.push("BEGIN:VEVENT",
+      "UID:noizz-ms-" + m.id + "@noizz.local",
+      "DTSTAMP:" + stamp,
+      "DTSTART;VALUE=DATE:" + icsDate(m.date),
+      "SUMMARY:" + icsEscape("★ אבן דרך: " + m.name),
+      "DESCRIPTION:" + icsEscape(m.description || ""),
+      "END:VEVENT");
+  });
+
+  data.tasks.filter(t => t.deadline && t.status !== "done").forEach(t => {
+    const assignee = getMember(t.assigneeId);
+    const cat = getCategory(t.categoryId);
+    const desc = [t.description, cat ? "קטגוריה: " + cat.name : "", assignee ? "אחראי: " + assignee.name : ""]
+      .filter(Boolean).join("\n");
+    lines.push("BEGIN:VEVENT",
+      "UID:noizz-task-" + t.id + "@noizz.local",
+      "DTSTAMP:" + stamp);
+    if (t.deadlineTime) {
+      const dt = icsDate(t.deadline) + "T" + t.deadlineTime.replace(":", "") + "00";
+      lines.push("DTSTART:" + dt, "DTEND:" + dt);
+    } else {
+      lines.push("DTSTART;VALUE=DATE:" + icsDate(t.deadline));
+    }
+    lines.push("SUMMARY:" + icsEscape("דד-ליין: " + t.title),
+      "DESCRIPTION:" + icsEscape(desc),
+      "END:VEVENT");
+  });
+
+  lines.push("END:VCALENDAR");
+  if (lines.length <= 5) { alert("אין דד-ליינים או אבני דרך לייצוא."); return; }
+  downloadFile("noizz-calendar-" + todayStr() + ".ics", lines.join("\r\n"), "text/calendar;charset=utf-8");
+});
+
+/* =========================================================
+   Init
+   ========================================================= */
+renderUserSelects();
+switchView("dashboard");
+</script>
+</body>
+</html>
