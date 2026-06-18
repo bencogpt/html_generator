@@ -174,6 +174,32 @@ const server = http.createServer((req, res) => {
 
   // settings: configure mock endpoint through the real UI
   await page.click('#btn-settings');
+
+  // connection presets fill adapter + base-URL template in one click
+  await page.selectOption('#p-preset', 'openshift');
+  const afterPreset = await page.evaluate(() => ({
+    url: document.querySelector('#p-baseurl').value,
+    name: document.querySelector('#p-name').value,
+    reset: document.querySelector('#p-preset').value,
+  }));
+  assert.ok(afterPreset.url.startsWith('https://') && afterPreset.url.includes('.apps.'), 'OpenShift preset fills https Route template: ' + afterPreset.url);
+  assert.ok(/OpenShift/i.test(afterPreset.name), 'preset names the profile: ' + afterPreset.name);
+  assert.equal(afterPreset.reset, '', 'preset selector resets after applying');
+  await page.selectOption('#p-preset', 'litellm');
+  assert.ok((await page.inputValue('#p-baseurl')).includes(':4000'), 'LiteLLM preset fills its URL');
+  console.log('✓ connection presets (OpenShift / LiteLLM) fill config in one click');
+
+  // a network failure surfaces the OpenShift/CORS + TLS diagnostic hints
+  await page.fill('#p-baseurl', `http://127.0.0.1:${PORT + 1}/v1`); // nothing listening → refused
+  await page.fill('#p-model', 'x');
+  await page.evaluate(() => { document.querySelector('#p-timeout').value = '5'; document.querySelector('#p-retries').value = '0'; });
+  await page.click('#btn-test');
+  await page.waitForSelector('#diag-box:not([hidden])', { timeout: 20000 });
+  const hints = await page.$$eval('#diag-hints li', (els) => els.map((e) => e.textContent));
+  assert.ok(hints.some((h) => /OpenShift AI/i.test(h)), 'OpenShift CORS hint shown on network error');
+  assert.ok(hints.some((h) => /TLS|certificate/i.test(h)), 'TLS/cert hint shown on network error');
+  console.log('✓ diagnostics surface OpenShift + TLS hints on connection failure');
+
   await page.fill('#p-baseurl', `http://127.0.0.1:${PORT}/v1`);
   await page.click('#btn-fetch-models');
   await page.waitForFunction(() => document.querySelectorAll('#model-list option').length === 2);
@@ -317,7 +343,9 @@ const server = http.createServer((req, res) => {
   assert.ok(/אינפוגרפיקה/.test(genLabel), 'Hebrew strings applied');
   console.log('✓ bilingual UI toggle (RTL)');
 
-  const fatal = errors.filter((e) => !/favicon/i.test(e));
+  // Ignore favicon noise and the browser's network-layer logs from the
+  // deliberately-failed connection test (refused/unreachable endpoint).
+  const fatal = errors.filter((e) => !/favicon|Failed to load resource|net::ERR_/i.test(e));
   assert.deepEqual(fatal, [], 'no page errors: ' + fatal.join(' ;; '));
 
   await browser.close();

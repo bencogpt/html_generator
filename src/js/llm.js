@@ -312,7 +312,7 @@
       const t = IDG.i18n.t;
       const hints = [];
       if (errCode === 'network') {
-        hints.push(t('hint_cors_ollama'), t('hint_cors_vllm'));
+        hints.push(t('hint_cors_ollama'), t('hint_cors_vllm'), t('hint_cors_openshift'), t('hint_tls'));
         if (global.location && global.location.protocol === 'file:') hints.push(t('hint_cors_file'));
       }
       if (errCode === 'model-or-path-404') hints.push(t('hint_model_404'));

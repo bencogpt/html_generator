@@ -142,6 +142,17 @@
           <input type="file" id="import-file" accept=".json" hidden>
         </div>
 
+        <div class="preset-bar">
+          <label class="field-label" data-i18n="conn_preset"></label>
+          <select id="p-preset">
+            <option value="" data-i18n="conn_preset_pick"></option>
+            <option value="litellm" data-i18n="preset_litellm"></option>
+            <option value="openshift" data-i18n="preset_openshift"></option>
+            <option value="vllm" data-i18n="preset_vllm"></option>
+            <option value="ollama" data-i18n="preset_ollama"></option>
+          </select>
+        </div>
+
         <div class="grid2">
           <label><span data-i18n="f_name"></span><input id="p-name" type="text"></label>
           <label><span data-i18n="f_adapter"></span>

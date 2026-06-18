@@ -336,6 +336,22 @@
       U.$('#p-adapter').addEventListener('change', (e) => {
         U.$('#custom-fields').hidden = e.target.value !== 'custom';
       });
+      U.$('#p-preset').addEventListener('change', (e) => {
+        const preset = IDG.store.CONN_PRESETS[e.target.value];
+        e.target.value = '';
+        if (!preset) return;
+        const p = this.readProfileFields();
+        // Only name a profile from the preset if it still has a default-ish name.
+        if (!p.name || /^(Local LLM|profile|Profile \d+)$/i.test(p.name)) p.name = t(preset.nameKey);
+        p.adapter = preset.adapter;
+        p.baseUrl = preset.baseUrl;
+        p.persistKey = preset.persistKey;
+        p.stream = preset.stream;
+        p.temperature = preset.temperature;
+        this.bindProfileFields();
+        this.renderProfileSelect();
+        U.$('#settings-msg').textContent = t('preset_applied');
+      });
       U.$('#btn-key-vis').addEventListener('click', () => {
         const k = U.$('#p-key');
         k.type = k.type === 'password' ? 'text' : 'password';

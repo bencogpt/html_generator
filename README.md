@@ -42,6 +42,20 @@ model drives through one-call helpers injected into every output:
 All of these render on `<canvas>` (no SVG, no Plotly, no CDNs), so outputs stay
 self-contained and offline. This adds ~0.2 MB to the artifact.
 
+### Connection presets & multiple profiles
+
+Settings → Connection supports multiple named profiles (e.g. a "LiteLLM"
+profile and an "OpenShift AI" profile) — switch the active one from the
+dropdown. The **Quick setup** picker pre-fills a profile for a known stack
+(LiteLLM, OpenShift AI / KServe-vLLM, vLLM, Ollama); you then add the model
+name and, if the deployment requires it, a token.
+
+Note: a profile only carries request-side settings (URL, model, key,
+headers). It can't add CORS headers to a server's responses or make the
+browser trust an untrusted cert — so for **OpenShift AI**, the reliable path
+is to front the model with **LiteLLM** (which allows browser CORS) and point
+the generator at the LiteLLM URL. See CORS below.
+
 ### CORS (deployment requirement)
 
 The browser calls your LLM server directly, so the server must allow the

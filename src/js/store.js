@@ -40,6 +40,18 @@
     },
   };
 
+  /* Connection presets (FR-30) — one-click starting points for common stacks.
+     They pre-fill adapter + a base-URL template + sane defaults; the user
+     still supplies the model name (and token where the deployment needs one).
+     Presets only set request-side config — they cannot add CORS headers or
+     trust a server cert, so OpenShift's note steers to the LiteLLM path. */
+  const CONN_PRESETS = {
+    litellm: { nameKey: 'preset_litellm', adapter: 'openai', baseUrl: 'http://localhost:4000/v1', persistKey: false, stream: true, temperature: 0.3 },
+    openshift: { nameKey: 'preset_openshift', adapter: 'openai', baseUrl: 'https://<model>-<project>.apps.<cluster-domain>/v1', persistKey: false, stream: true, temperature: 0.3 },
+    vllm: { nameKey: 'preset_vllm', adapter: 'openai', baseUrl: 'http://localhost:8000/v1', persistKey: false, stream: true, temperature: 0.3 },
+    ollama: { nameKey: 'preset_ollama', adapter: 'openai', baseUrl: 'http://localhost:11434/v1', persistKey: false, stream: true, temperature: 0.3 },
+  };
+
   const DEFAULT_CUSTOM_TEMPLATE = JSON.stringify(
     {
       model: '{{MODEL}}',
@@ -137,6 +149,7 @@
 
   const store = {
     PALETTES,
+    CONN_PRESETS,
     DEFAULT_CUSTOM_TEMPLATE,
     defaultProfile,
     load,
