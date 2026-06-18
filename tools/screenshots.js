@@ -36,6 +36,16 @@ const RESULT_HTML = `<!DOCTYPE html>
 </div></section>
 <section class="card"><h2 class="section-title">פריסה גלובלית (נתח שוק לפי מדינה)</h2><div class="chart-box map"><canvas id="chartMap"></canvas></div></section>
 <section class="card"><h2 class="section-title">מטריצת יכולות מול מתחרים</h2><div class="chart-box tall"><canvas id="chartHeat"></canvas></div></section>
+<section class="card"><h2 class="section-title">תהליך אימוץ הפתרון</h2>
+<div class="flow">
+<div class="flow-step"><span class="step-title">איסוף דרישות</span>מיפוי צרכים</div>
+<div class="flow-arrow">←</div>
+<div class="flow-step"><span class="step-title">השוואת ספקים</span>הערכת חלופות</div>
+<div class="flow-arrow">←</div>
+<div class="flow-step"><span class="step-title">פיילוט</span>בדיקת היתכנות</div>
+<div class="flow-arrow">←</div>
+<div class="flow-step"><span class="step-title">הטמעה</span>חתימת חוזה</div>
+</div></section>
 <footer class="footer">מקור: sample-he.docx · נוצר 2026-06-11 · מודל: mock-llama</footer>
 </div>
 <script>document.addEventListener('DOMContentLoaded',function(){

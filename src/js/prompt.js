@@ -62,7 +62,7 @@ Keep every number EXACTLY as it appears in the text. Keep the document's origina
     const base = state.systemPrompt || DEFAULT_SYSTEM_PROMPT;
     const pal = paletteFor(state);
     const flowRule = state.output.includeFlow
-      ? 'Flow diagram: if the document describes a process or sequence, render it as a pure-CSS flowchart: <div class="flow"> containing <div class="flow-step"> items separated by <div class="flow-arrow"></div>. No SVG.'
+      ? 'Flow diagram: if the document describes a process or sequence, render it as a pure-CSS flowchart: <div class="flow"> containing <div class="flow-step"><span class="step-title">…</span>short description</div> items, each pair separated by an EMPTY <div class="flow-arrow"></div>. The connector arrow is drawn automatically by CSS — do NOT put any →, ←, ->, or other arrow character inside flow-arrow, and do not add your own arrows between steps. No SVG.'
       : 'Do NOT include a flow diagram section.';
     let langRule = '';
     if (state.output.langOverride && state.output.langOverride !== 'auto') {

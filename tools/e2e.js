@@ -59,6 +59,14 @@ const CHARTS_HTML = `<!DOCTYPE html>
 <section class="card"><h2 class="section-title">פולאר</h2><div class="chart-box small"><canvas id="cPolar"></canvas></div></section>
 <section class="card"><h2 class="section-title">מפת חום</h2><div class="chart-box tall"><canvas id="cHeat"></canvas></div></section>
 <section class="card"><h2 class="section-title">מפה</h2><div class="chart-box map"><canvas id="cMap"></canvas></div></section>
+<section class="card"><h2 class="section-title">תהליך</h2>
+<div class="flow">
+<div class="flow-step"><span class="step-title">שלב א</span>חישה</div>
+<div class="flow-arrow">←</div>
+<div class="flow-step"><span class="step-title">שלב ב</span>עיבוד</div>
+<div class="flow-arrow">←</div>
+<div class="flow-step"><span class="step-title">שלב ג</span>כיוונון</div>
+</div></section>
 </div>
 <script>
 document.addEventListener('DOMContentLoaded',function(){
@@ -270,15 +278,28 @@ const server = http.createServer((req, res) => {
     heatPoints: window.Chart.getChart('cHeat').data.datasets[0].data.length,
     israel: !!window.IDG_GEO.feature('Israel'),
     usaAlias: !!window.IDG_GEO.feature('USA'),
+    // flow-arrow contains a stray "←"; the fix must hide it and draw one CSS chevron
+    flow: (function () {
+      var a = document.querySelector('.flow-arrow');
+      if (!a) return null;
+      var own = getComputedStyle(a);
+      var after = getComputedStyle(a, '::after');
+      return { fontPx: own.fontSize, afterContent: after.content, afterW: Math.round(parseFloat(after.width) || 0) };
+    })(),
   }));
   assert.deepEqual(chartInfo.controllers, ['matrix', 'choropleth', 'bubbleMap', 'polarArea'], 'new chart controllers registered');
   assert.equal(chartInfo.countries, 177, 'world country features loaded offline');
   assert.equal(chartInfo.mapPoints, 177, 'choropleth bound to all countries');
   assert.equal(chartInfo.heatPoints, 6, 'heatmap matrix points (2x3)');
   assert.ok(chartInfo.israel && chartInfo.usaAlias, 'country name + alias lookup works');
+  // double-arrow regression: stray glyph hidden (font-size 0), single CSS chevron drawn
+  assert.equal(chartInfo.flow.fontPx, '0px', 'stray arrow glyph hidden (no double arrow)');
+  assert.ok(chartInfo.flow.afterContent === '""' || chartInfo.flow.afterContent === 'none' || chartInfo.flow.afterContent === '', 'chevron uses empty content, not a glyph');
+  assert.ok(chartInfo.flow.afterW >= 10, 'CSS chevron rendered (width ' + chartInfo.flow.afterW + ')');
   const chartsSrcdoc = await page.getAttribute('#result-frame', 'srcdoc');
   assert.ok(!/(?:src|href)=["'](?:https?:)?\/\//.test(chartsSrcdoc), 'map/heatmap artifact has no external refs');
   console.log('✓ expanded charts: polarArea + heatmap + choropleth render offline (' + chartInfo.countries + ' countries embedded)');
+  console.log('✓ flow diagram: stray arrow glyph hidden, single CSS chevron (font-size ' + chartInfo.flow.fontPx + ', chevron ' + chartInfo.flow.afterW + 'px)');
 
   // legacy .doc rejection (FR-12 / acceptance #6)
   await page.keyboard.press('Escape');
