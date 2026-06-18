@@ -22,13 +22,29 @@ STRUCTURE (model it on a professional market-survey infographic):
 - Hero header: <header class="hero"> with an emoji icon (<span class="icon">), an <h1> title and a <p class="subtitle"> — derived from the document.
 - 3–7 content sections, each a <section class="card"> with an <h2 class="section-title">.
 - KPI strip: a <div class="grid-3"> (or grid-4) of <div class="kpi"><div class="value">…</div><div class="label">…</div></div> for headline numbers found in the document.
-- Charts: {{MAX_CHARTS}} chart(s) at most, each inside <div class="chart-box"><canvas id="chart1"></canvas></div>. Choose appropriate types (doughnut / bar / radar / line). Put ALL chart initialization in ONE <script> block at the END of <body>, wrapped in: document.addEventListener('DOMContentLoaded', function () { … });
+- Charts: {{MAX_CHARTS}} chart(s) at most, each inside <div class="chart-box"><canvas id="chart1"></canvas></div> (give each canvas a unique id). VARY the chart types across the infographic — do not make every chart a doughnut. Pick the type that fits each data shape (see CHART TYPES below). Put ALL chart initialization in ONE <script> block at the END of <body>, wrapped in: document.addEventListener('DOMContentLoaded', function () { … });
   For RTL documents set options.plugins.legend.rtl = true and textDirection:'rtl'. Always set responsive:true and maintainAspectRatio:false. Use the palette colors below for datasets.
 - Entity cards: when the document enumerates entities (companies, products, options), render a <div class="grid-3"> of <div class="entity-card"> each with <h3>, a one-line description, and a short <ul> of key points.
 - {{FLOW_RULE}}
 - Footer: <footer class="footer"> with the source filename, generation date and model name (values are provided in the user message).
 
-AVAILABLE CSS CLASSES (injected via {{BASE_CSS}}; prefer them over custom CSS): .container, .hero, .icon, .subtitle, .card, .section-title, .subsection-title, .grid-2, .grid-3, .grid-4, .kpi, .value, .label, .entity-card (+ .alt), .chart-box (+ .small), .badge, .pill, .data-table, .flow, .flow-step, .step-title, .flow-arrow, .hbar, .footer, .muted, .accent.
+CHART TYPES (all render on <canvas> via the injected Chart.js + plugins — choose by data shape, and mix them for variety):
+- Composition (parts of a whole): "doughnut" or "pie" or "polarArea".
+- Comparison across categories: "bar" (vertical). For long category labels use a horizontal bar by setting options.indexAxis:'y'. For multiple series per category add several datasets (grouped); to show composition within each category set options.scales.x.stacked:true and options.scales.y.stacked:true (stacked bar).
+- Multi-dimension profile / strengths: "radar".
+- Trend over time: "line" (set datasets[].fill:true and a translucent backgroundColor for an area chart).
+- Correlation: "scatter" (data:[{x,y}]); add a third dimension with "bubble" (data:[{x,y,r}]).
+- Heatmap / matrix (intensity grid, capability matrices, density): call the provided helper —
+    IDG_CHARTS.heatmap('canvasId', rowLabels, colLabels, matrix, { label:'…' });
+  where matrix[rowIndex][colIndex] is a number. Use this for any "X vs Y intensity" data.
+- Geographic distribution BY COUNTRY (only when the document gives per-country numbers — never invent them): call —
+    IDG_CHARTS.choropleth('canvasId', { 'Israel':12, 'United States':40, 'Germany':8 }, { label:'…' });
+  or, for proportional circles, IDG_CHARTS.bubbleMap('canvasId', { 'Israel':12, … }, { label:'…' });
+  Country names are English; an embedded world map is provided offline (no data to fetch). Common aliases like USA/UK are handled.
+  These helpers are RTL- and palette-aware and need no options. Plain "new Chart(...)" configs (including type:'matrix'/'choropleth') also work if you prefer.
+Map/heatmap canvases look best in <div class="chart-box tall"> or <div class="chart-box map">.
+
+AVAILABLE CSS CLASSES (injected via {{BASE_CSS}}; prefer them over custom CSS): .container, .hero, .icon, .subtitle, .card, .section-title, .subsection-title, .grid-2, .grid-3, .grid-4, .kpi, .value, .label, .entity-card (+ .alt), .chart-box (+ .small / .tall / .map / .wide), .badge, .pill, .data-table, .flow, .flow-step, .step-title, .flow-arrow, .hbar, .footer, .muted, .accent.
 Wrap main content in <div class="container">. You may add ONE small <style> block for fine-tuning; it must reference no external resources. The palette is exposed as CSS variables: --c-primary, --c-secondary, --c-accent, --c-bg, --c-grad-a, --c-grad-b.
 
 COLOR PALETTE for this run: {{PALETTE_JSON}} — use these hex values for chart datasets and accents.

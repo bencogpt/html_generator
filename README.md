@@ -29,6 +29,19 @@ The only network traffic the generator ever produces is to the endpoint you
 configured. Legacy binary `.doc` files are rejected with a "re-save as .docx"
 message.
 
+### Chart variety
+
+Generated infographics can use the full Chart.js type palette — doughnut/pie,
+**polar area**, bar (vertical, **horizontal**, **stacked**, grouped), line/area,
+radar, **scatter** and **bubble** — plus two vendored, fully-offline extras the
+model drives through one-call helpers injected into every output:
+
+- **Heatmaps / matrices** (`chartjs-chart-matrix`): `IDG_CHARTS.heatmap(canvas, rows, cols, matrix, opts)` — capability matrices, density grids.
+- **Geographic maps** (`chartjs-chart-geo` + an embedded 177-country world atlas): `IDG_CHARTS.choropleth(canvas, {Country: value}, opts)` and `IDG_CHARTS.bubbleMap(...)`. Country names are English with common aliases (USA/UK) handled; no map data is fetched. Used only when the document actually contains per-country numbers (the "never invent data" rule still applies).
+
+All of these render on `<canvas>` (no SVG, no Plotly, no CDNs), so outputs stay
+self-contained and offline. This adds ~0.2 MB to the artifact.
+
 ### CORS (deployment requirement)
 
 The browser calls your LLM server directly, so the server must allow the
@@ -62,10 +75,17 @@ src/
   js/                 modules: util, i18n, store, extract, llm, prompt,
                       postprocess, metrics, pipeline, ui, main
 vendor/
-  chart.umd.min.js    Chart.js 4.4.0 (MIT) — UI dashboard + injected into outputs
+  chart.umd.min.js        Chart.js 4.4.0 (MIT) — UI dashboard + injected into outputs
+  chartjs-chart-matrix.min.js   matrix plugin (MIT) — heatmaps
+  chartjs-chart-geo.umd.min.js  geo plugin (MIT) — choropleth/bubble maps
+  topojson-client.min.js  topojson-client (ISC) — world topology → features
+  world-countries-110m.json  world-atlas (ISC) — 177 country borders, embedded
   mammoth.browser.min.js  mammoth.js 1.8.0 (BSD-2) — DOCX extraction
-  fonts/heebo-*.woff2 Heebo subsets (OFL), weights 300/400/600/800,
-                      Hebrew + Basic Latin, ~15 KB each
+  fonts/heebo-*.woff2     Heebo subsets (OFL), weights 300/400/600/800,
+                          Hebrew + Basic Latin, ~15 KB each
+src/output/
+  base.css            utility CSS injected into every generated infographic
+  chart-extras.js     IDG_CHARTS/IDG_GEO helper runtime injected into outputs
 tools/
   build.js            assembles everything into generator.html (no deps)
   subset_fonts.py     regenerates the font subsets (fonttools + brotli)

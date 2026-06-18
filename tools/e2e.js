@@ -45,6 +45,31 @@ const CLEAN_HTML = DIRTY_HTML
   .replace(/```(html)?\n?/g, '')
   .replace(/<link href="https:[^>]+>\n?/, '');
 
+// A clean document exercising the expanded chart palette: a native polarArea,
+// a heatmap (matrix plugin) and a choropleth world map (geo plugin), built via
+// the injected IDG_CHARTS helpers + embedded world data.
+const CHARTS_HTML = `<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head><meta charset="UTF-8"><title>גרפים</title>
+{{BASE_CSS}}
+{{CHART_LIB}}
+</head>
+<body>
+<div class="container">
+<section class="card"><h2 class="section-title">פולאר</h2><div class="chart-box small"><canvas id="cPolar"></canvas></div></section>
+<section class="card"><h2 class="section-title">מפת חום</h2><div class="chart-box tall"><canvas id="cHeat"></canvas></div></section>
+<section class="card"><h2 class="section-title">מפה</h2><div class="chart-box map"><canvas id="cMap"></canvas></div></section>
+</div>
+<script>
+document.addEventListener('DOMContentLoaded',function(){
+  new Chart(document.getElementById('cPolar'),{type:'polarArea',data:{labels:['א','ב','ג'],datasets:[{data:[11,17,9]}]},options:{responsive:true,maintainAspectRatio:false}});
+  IDG_CHARTS.heatmap('cHeat',['שורה1','שורה2'],['A','B','C'],[[1,5,9],[7,3,2]],{label:'עוצמה'});
+  IDG_CHARTS.choropleth('cMap',{'Israel':40,'United States':25,'Germany':15},{label:'נתח'});
+});
+</scr` + `ipt>
+</body>
+</html>`;
+
 let chatCalls = 0;
 
 const server = http.createServer((req, res) => {
@@ -65,10 +90,12 @@ const server = http.createServer((req, res) => {
     req.on('data', (c) => (body += c));
     req.on('end', () => {
       const parsed = JSON.parse(body);
-      const isPing = JSON.stringify(parsed.messages).includes('pong');
+      const msgStr = JSON.stringify(parsed.messages);
+      const isPing = msgStr.includes('pong');
       chatCalls++;
-      const isRepair = JSON.stringify(parsed.messages).includes('previous HTML output has problems');
-      const content = isPing ? 'pong' : isRepair ? CLEAN_HTML : DIRTY_HTML;
+      const isRepair = msgStr.includes('previous HTML output has problems');
+      const isCharts = msgStr.includes('CHARTS_TEST');
+      const content = isPing ? 'pong' : isCharts ? CHARTS_HTML : isRepair ? CLEAN_HTML : DIRTY_HTML;
 
       if (parsed.stream) {
         res.writeHead(200, Object.assign({ 'Content-Type': 'text/event-stream' }, cors));
@@ -217,6 +244,41 @@ const server = http.createServer((req, res) => {
   await page.click('#metrics-tabs [data-tab="tab-dash"]');
   await page.waitForFunction(() => document.querySelectorAll('#agg-cards .agg-card').length === 6);
   console.log('✓ performance modal: runs table + dashboard aggregates');
+  await page.keyboard.press('Escape');
+
+  // expanded chart palette: polar area + heatmap (matrix plugin) + choropleth
+  // world map (geo plugin) all render offline in the sandboxed iframe
+  await page.click('#paste-details summary');
+  await page.fill('#paste-area', 'CHARTS_TEST — בדיקת מגוון גרפים: פולאר, מפת חום ומפה גאוגרפית.');
+  await page.click('#btn-paste-use');
+  await page.click('#btn-generate');
+  await page.waitForFunction(() => {
+    const r = JSON.parse(localStorage.getItem('idg.metrics.v1') || '[]');
+    return r.length && r[r.length - 1].source === 'pasted-text' && r[r.length - 1].status !== 'failed';
+  }, null, { timeout: 30000 });
+  const chartsFrame = page.frames().find((f) => f !== page.mainFrame());
+  await chartsFrame.waitForFunction(() => {
+    const g = window.IDG_GEO, ch = window.Chart;
+    return g && g.ready && ch && window.IDG_CHARTS &&
+      window.Chart.getChart('cPolar') && window.Chart.getChart('cHeat') && window.Chart.getChart('cMap');
+  }, null, { timeout: 15000 });
+  const chartInfo = await chartsFrame.evaluate(() => ({
+    controllers: ['matrix', 'choropleth', 'bubbleMap', 'polarArea'].filter(
+      (t) => !!window.Chart.registry.controllers.items[t]),
+    countries: window.IDG_GEO.countries.length,
+    mapPoints: window.Chart.getChart('cMap').data.datasets[0].data.length,
+    heatPoints: window.Chart.getChart('cHeat').data.datasets[0].data.length,
+    israel: !!window.IDG_GEO.feature('Israel'),
+    usaAlias: !!window.IDG_GEO.feature('USA'),
+  }));
+  assert.deepEqual(chartInfo.controllers, ['matrix', 'choropleth', 'bubbleMap', 'polarArea'], 'new chart controllers registered');
+  assert.equal(chartInfo.countries, 177, 'world country features loaded offline');
+  assert.equal(chartInfo.mapPoints, 177, 'choropleth bound to all countries');
+  assert.equal(chartInfo.heatPoints, 6, 'heatmap matrix points (2x3)');
+  assert.ok(chartInfo.israel && chartInfo.usaAlias, 'country name + alias lookup works');
+  const chartsSrcdoc = await page.getAttribute('#result-frame', 'srcdoc');
+  assert.ok(!/(?:src|href)=["'](?:https?:)?\/\//.test(chartsSrcdoc), 'map/heatmap artifact has no external refs');
+  console.log('✓ expanded charts: polarArea + heatmap + choropleth render offline (' + chartInfo.countries + ' countries embedded)');
 
   // legacy .doc rejection (FR-12 / acceptance #6)
   await page.keyboard.press('Escape');

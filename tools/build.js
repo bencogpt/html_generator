@@ -60,9 +60,23 @@ function main() {
   const appCss = read('src/app.css');
   const baseCss = read('src/output/base.css');
   const fontCss = buildFontCss();
-  const chartSrc = read('vendor/chart.umd.min.js');
   const mammothSrc = read('vendor/mammoth.browser.min.js');
   const appJs = JS_MODULES.map((m) => `/* === ${m} === */\n${read(m)}`).join('\n');
+
+  /* The chart bundle injected at {{CHART_LIB}} (and run in the generator's own
+     page for the dashboard): Chart.js + the matrix(heatmap) and geo(map)
+     plugins + topojson-client, then the embedded world topology, then the
+     IDG_CHARTS / IDG_GEO helper runtime. Order matters: plugins and
+     topojson-client must see the global Chart/topojson and auto-register. */
+  const worldTopo = read('vendor/world-countries-110m.json').trim();
+  const chartSrc = [
+    read('vendor/chart.umd.min.js'),
+    read('vendor/chartjs-chart-matrix.min.js'),
+    read('vendor/topojson-client.min.js'),
+    read('vendor/chartjs-chart-geo.umd.min.js'),
+    ';window.__IDG_WORLD_TOPO__=' + worldTopo + ';',
+    read('src/output/chart-extras.js'),
+  ].join('\n;\n');
 
   /* Assets shipped once as string literals: CHART_SRC doubles as the
      generator's own chart runtime (installed via new Function at boot) and as
@@ -74,7 +88,7 @@ function main() {
     `FONT_CSS: ${jsonStringSafe(JSON.stringify(fontCss))}\n` +
     '};';
 
-  const buildInfo = `built ${new Date().toISOString()} · chart.js 4.4.0 · mammoth.js 1.8.0 · Heebo subset (OFL) w${FONT_WEIGHTS.join('/')}`;
+  const buildInfo = `built ${new Date().toISOString()} · chart.js 4.4.0 + matrix/geo plugins · mammoth.js 1.8.0 · world-atlas 110m · Heebo subset (OFL) w${FONT_WEIGHTS.join('/')}`;
 
   let html = shell
     .replace('{{BUILD_INFO}}', buildInfo)
@@ -94,7 +108,7 @@ function main() {
   const size = Buffer.byteLength(html);
   const mb = (size / 1024 / 1024).toFixed(2);
   console.log(`${outFile}: ${size.toLocaleString()} bytes (${mb} MB)`);
-  console.log(`  chart.js: ${chartSrc.length.toLocaleString()} · mammoth: ${mammothSrc.length.toLocaleString()} · fonts(css): ${fontCss.length.toLocaleString()} · app js: ${appJs.length.toLocaleString()} · app css: ${appCss.length.toLocaleString()}`);
+  console.log(`  chart bundle: ${chartSrc.length.toLocaleString()} · mammoth: ${mammothSrc.length.toLocaleString()} · fonts(css): ${fontCss.length.toLocaleString()} · app js: ${appJs.length.toLocaleString()} · app css: ${appCss.length.toLocaleString()}`);
   if (size > 6 * 1024 * 1024) throw new Error('Exceeds the 6 MB hard ceiling (spec §3.2)');
   if (size > 4 * 1024 * 1024) console.warn('WARNING: above the 4 MB target (spec §3.2)');
 }

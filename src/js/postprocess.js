@@ -57,7 +57,8 @@
     let s = String(html || '');
     const cssBlock = '<style>\n' + assets.FONT_CSS + '\n' + assets.BASE_CSS + '\n</style>';
     const palBlock = assets.PALETTE_CSS ? '<style>' + assets.PALETTE_CSS + '</style>' : '';
-    const libBlock = '<script>\n' + assets.CHART_SRC + '\n</script>';
+    // Escape any literal </script in the bundle so it can't close the tag early.
+    const libBlock = '<script>\n' + String(assets.CHART_SRC).replace(/<\/script/gi, '<\\/script') + '\n</script>';
 
     let cssInjected = false, libInjected = false;
     if (s.includes('{{BASE_CSS}}')) { s = s.split('{{BASE_CSS}}').join(cssBlock + palBlock); cssInjected = true; }

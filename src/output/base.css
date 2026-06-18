@@ -102,6 +102,9 @@ body {
 /* ---- Charts ---- */
 .chart-box { position: relative; height: 320px; max-width: 640px; margin: 0 auto; }
 .chart-box.small { height: 240px; }
+.chart-box.tall { height: 420px; max-width: 760px; }
+.chart-box.wide { max-width: 960px; }
+.chart-box.map { height: 460px; max-width: 920px; }
 
 /* ---- Badges & pills ---- */
 .badge {

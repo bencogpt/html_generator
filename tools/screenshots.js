@@ -34,9 +34,15 @@ const RESULT_HTML = `<!DOCTYPE html>
 <div class="flow-step"><span class="step-title">פיילוט</span></div><div class="flow-arrow"></div>
 <div class="flow-step"><span class="step-title">חתימת חוזה</span></div>
 </div></section>
+<section class="card"><h2 class="section-title">פריסה גלובלית (נתח שוק לפי מדינה)</h2><div class="chart-box map"><canvas id="chartMap"></canvas></div></section>
+<section class="card"><h2 class="section-title">מטריצת יכולות מול מתחרים</h2><div class="chart-box tall"><canvas id="chartHeat"></canvas></div></section>
 <footer class="footer">מקור: sample-he.docx · נוצר 2026-06-11 · מודל: mock-llama</footer>
 </div>
-<script>document.addEventListener('DOMContentLoaded',function(){new Chart(document.getElementById('chart1'),{type:'doughnut',data:{labels:['אלפא','בטא','גמא','אחרים'],datasets:[{data:[40,25,20,15],backgroundColor:['#2563EB','#60A5FA','#1E40AF','#93C5FD']}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',rtl:true,textDirection:'rtl',labels:{font:{family:'Heebo',size:14}}}}}});});</scr` + `ipt>
+<script>document.addEventListener('DOMContentLoaded',function(){
+new Chart(document.getElementById('chart1'),{type:'doughnut',data:{labels:['אלפא','בטא','גמא','אחרים'],datasets:[{data:[40,25,20,15],backgroundColor:['#2563EB','#60A5FA','#1E40AF','#93C5FD']}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',rtl:true,textDirection:'rtl',labels:{font:{family:'Heebo',size:14}}}}}});
+IDG_CHARTS.choropleth('chartMap',{'Israel':40,'United States':25,'Germany':15,'India':12,'Japan':9,'Brazil':6,'Australia':5},{label:'נתח שוק'});
+IDG_CHARTS.heatmap('chartHeat',['אלפא','בטא','גמא'],['AI','ענן','סייבר','נתונים'],[[95,80,70,88],[60,90,75,65],[40,55,95,70]],{label:'רמת יכולת'});
+});</scr` + `ipt>
 </body>
 </html>`;
 
@@ -72,8 +78,16 @@ const server = http.createServer((req, res) => {
 
   await page.click('#btn-generate');
   await page.waitForFunction(() => !document.querySelector('#btn-download').disabled, null, { timeout: 30000 });
-  await page.waitForTimeout(900); // let the chart animate in
+  const frame = page.frames().find((f) => f !== page.mainFrame());
+  await frame.waitForFunction(() => window.Chart && window.Chart.getChart('chartMap') && window.Chart.getChart('chartHeat'), null, { timeout: 15000 });
+  await page.waitForTimeout(1200); // let charts animate in
   await page.screenshot({ path: '/tmp/shot-2-result.png' });
+
+  // scroll the iframe to the map + heatmap and capture them
+  await frame.evaluate(() => document.getElementById('chartMap').scrollIntoView({ block: 'start' }));
+  await page.waitForTimeout(600);
+  const frameEl = await page.$('#result-frame');
+  await frameEl.screenshot({ path: '/tmp/shot-5-newcharts.png' });
 
   await page.click('#btn-metrics');
   await page.click('#metrics-tabs [data-tab="tab-dash"]');
