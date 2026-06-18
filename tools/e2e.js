@@ -209,13 +209,21 @@ const server = http.createServer((req, res) => {
   const testResult = await page.textContent('#test-result');
   assert.ok(testResult.includes('11/2'), 'test connection reports server usage: ' + testResult);
   console.log('✓ test connection + fetch models:', testResult.trim());
+
+  // user-selectable detail level (Output tab)
+  await page.click('#settings-tabs [data-tab="tab-output"]');
+  const detailOpts = await page.$$eval('#o-detail option', (els) => els.map((e) => e.value));
+  assert.deepEqual(detailOpts, ['concise', 'balanced', 'comprehensive'], 'detail-level options present');
+  await page.selectOption('#o-detail', 'comprehensive');
   await page.click('#btn-settings-save');
   await page.click('#settings-modal .modal-foot .modal-close');
 
   // settings persistence (acceptance #3): reload, value must survive
   await page.reload();
   await page.waitForFunction(() => document.querySelector('#endpoint-url').textContent.includes('127.0.0.1'));
-  console.log('✓ settings persisted across reload');
+  const persistedDetail = await page.evaluate(() => JSON.parse(localStorage.getItem('idg.settings.v1')).output.detailLevel);
+  assert.equal(persistedDetail, 'comprehensive', 'detail level persisted across reload');
+  console.log('✓ settings persisted across reload (incl. detail level)');
 
   // re-ingest after reload — this time a real Hebrew .docx through mammoth
   // (acceptance #1), then generate

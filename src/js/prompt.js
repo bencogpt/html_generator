@@ -20,10 +20,11 @@ OUTPUT CONTRACT — follow exactly:
 
 STRUCTURE (model it on a professional market-survey infographic):
 - Hero header: <header class="hero"> with an emoji icon (<span class="icon">), an <h1> title and a <p class="subtitle"> — derived from the document.
-- 3–7 content sections, each a <section class="card"> with an <h2 class="section-title">.
+- {{SECTIONS_RULE}}, each a <section class="card"> with an <h2 class="section-title">. Base every section on the document — never pad with invented content.
 - KPI strip: a <div class="grid-3"> (or grid-4) of <div class="kpi"><div class="value">…</div><div class="label">…</div></div> for headline numbers found in the document.
 - Charts: {{MAX_CHARTS}} chart(s) at most, each inside <div class="chart-box"><canvas id="chart1"></canvas></div> (give each canvas a unique id). VARY the chart types across the infographic — do not make every chart a doughnut. Pick the type that fits each data shape (see CHART TYPES below). Put ALL chart initialization in ONE <script> block at the END of <body>, wrapped in: document.addEventListener('DOMContentLoaded', function () { … });
   For RTL documents set options.plugins.legend.rtl = true and textDirection:'rtl'. Always set responsive:true and maintainAspectRatio:false. Use the palette colors below for datasets.
+  ROBUSTNESS (important): wrap EACH chart's initialization in its OWN try { … } catch (e) {} block, so that if one chart fails the others still render. Before initializing a chart, get its canvas with document.getElementById(...) and skip it if the element is missing. Make sure every <canvas> id you reference actually exists in the HTML, and that each canvas is initialized only once. Prefer the IDG_CHARTS helpers for heatmaps and maps.
 - Entity cards: when the document enumerates entities (companies, products, options), render a <div class="grid-3"> of <div class="entity-card"> each with <h3>, a one-line description, and a short <ul> of key points.
 - {{FLOW_RULE}}
 - Footer: <footer class="footer"> with the source filename, generation date and model name (values are provided in the user message).
@@ -54,6 +55,14 @@ COLOR PALETTE for this run: {{PALETTE_JSON}} — use these hex values for chart 
 {"sections":[{"heading":"…","summary":"…","key_points":["…"]}],"numbers":[{"label":"…","value":"…","unit":"…"}],"entities":[{"name":"…","description":"…","attributes":["…"]}],"tables":[[["…"]]]}
 Keep every number EXACTLY as it appears in the text. Keep the document's original language. Omit empty arrays.`;
 
+  /* Detail level → how many sections / how much of the document to cover
+     (user-selectable, Settings → Output). */
+  const SECTIONS_RULES = {
+    concise: 'Produce 3–4 concise content sections covering only the most important themes of the document; keep each section short',
+    balanced: 'Produce 4–7 content sections covering the document\'s main themes',
+    comprehensive: 'Produce as many content sections as the document needs to be covered thoroughly (typically 6–12, more for long documents); include every major topic, section and data point from the document and do not omit or over-summarize content',
+  };
+
   function paletteFor(state) {
     return IDG.store.PALETTES[state.output.palette] || IDG.store.PALETTES['vibrant-tech-blues'];
   }
@@ -70,7 +79,9 @@ Keep every number EXACTLY as it appears in the text. Keep the document's origina
       const m = map[state.output.langOverride];
       if (m) langRule = `LANGUAGE OVERRIDE: write the entire infographic in ${m[0]} with dir="${m[1]}", regardless of the document language.`;
     }
+    const sectionsRule = SECTIONS_RULES[state.output.detailLevel] || SECTIONS_RULES.balanced;
     return base
+      .split('{{SECTIONS_RULE}}').join(sectionsRule)
       .split('{{MAX_CHARTS}}').join(String(state.output.maxCharts || 3))
       .split('{{FLOW_RULE}}').join(flowRule)
       .split('{{PALETTE_JSON}}').join(JSON.stringify({

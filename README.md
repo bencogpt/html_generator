@@ -20,7 +20,9 @@ performance/metrics dashboard.
    Ollama), pick a model (the *Fetch model list* button queries
    `GET /v1/models`), and press **Test connection**.
 3. Drop a `.docx` (or `.txt`/`.md`, or paste raw text), check the extraction
-   preview, choose a palette, and **Generate**.
+   preview, choose a palette, and **Generate**. Settings → Output has a
+   **Detail level** (Concise / Balanced / Comprehensive) to control how much of
+   the document the report covers.
 4. Download / copy the result — a single offline HTML file with the chart
    library, stylesheet, and Heebo font subset all embedded. Regenerate with
    free-text feedback if you want changes.

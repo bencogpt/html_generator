@@ -206,6 +206,7 @@
       }
       palSel.value = this.buffer.output.palette;
       U.$('#o-lang').value = this.buffer.output.langOverride;
+      U.$('#o-detail').value = this.buffer.output.detailLevel || 'balanced';
       U.$('#o-maxcharts').value = this.buffer.output.maxCharts;
       U.$('#o-flow').checked = !!this.buffer.output.includeFlow;
       U.$('#o-cap').value = this.buffer.output.fileCapMB;
@@ -216,6 +217,7 @@
       this.buffer.systemPrompt = ed.trim() && ed !== IDG.prompt.DEFAULT_SYSTEM_PROMPT ? ed : null;
       this.buffer.output.palette = U.$('#o-palette').value;
       this.buffer.output.langOverride = U.$('#o-lang').value;
+      this.buffer.output.detailLevel = U.$('#o-detail').value;
       this.buffer.output.maxCharts = Math.max(0, parseInt(U.$('#o-maxcharts').value, 10) || 3);
       this.buffer.output.includeFlow = U.$('#o-flow').checked;
       this.buffer.output.fileCapMB = Math.max(1, parseInt(U.$('#o-cap').value, 10) || 10);

@@ -145,9 +145,20 @@ test('chunkText respects budget and keeps content', () => {
 test('renderSystemPrompt fills placeholders', () => {
   IDG.store.load();
   const sp = IDG.prompt.renderSystemPrompt(IDG.store.state);
-  assert.ok(!/\{\{(MAX_CHARTS|FLOW_RULE|PALETTE_JSON|LANG_RULE)\}\}/.test(sp));
+  assert.ok(!/\{\{(MAX_CHARTS|FLOW_RULE|PALETTE_JSON|LANG_RULE|SECTIONS_RULE)\}\}/.test(sp));
   assert.ok(sp.includes('{{BASE_CSS}}') && sp.includes('{{CHART_LIB}}'));  // tokens for the model stay
   assert.ok(sp.includes('#2563EB'));
+  assert.ok(/try \{/.test(sp) && /catch/.test(sp), 'per-chart try/catch instruction present');
+});
+test('detail level changes section guidance', () => {
+  const s = IDG.store.load();
+  s.output.detailLevel = 'concise';
+  assert.match(IDG.prompt.renderSystemPrompt(s), /3–4 concise/);
+  s.output.detailLevel = 'comprehensive';
+  const comp = IDG.prompt.renderSystemPrompt(s);
+  assert.match(comp, /thoroughly|every major topic/);
+  assert.ok(!/\{\{SECTIONS_RULE\}\}/.test(comp));
+  s.output.detailLevel = 'balanced';
 });
 test('docBudget leaves room for output', () => {
   const profile = { contextWindow: 8192, maxTokens: 4096 };

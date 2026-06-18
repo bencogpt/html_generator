@@ -101,6 +101,7 @@
       output: {
         palette: 'vibrant-tech-blues',
         langOverride: 'auto',            // auto | he | en | ar
+        detailLevel: 'balanced',         // concise | balanced | comprehensive
         maxCharts: 3,
         includeFlow: true,
         fileCapMB: 10,                   // FR-13
