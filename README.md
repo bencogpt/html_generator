@@ -58,10 +58,32 @@ browser trust an untrusted cert — so for **OpenShift AI**, the reliable path
 is to front the model with **LiteLLM** (which allows browser CORS) and point
 the generator at the LiteLLM URL. See CORS below.
 
+### Connecting without `--disable-web-security` (bundled CORS proxy)
+
+If your endpoint works from `curl`/LiteLLM but the generator can't reach it,
+and launching Chrome with `--disable-web-security` "fixes" it, the issue is
+**CORS** — the server (e.g. an OpenShift AI Route) doesn't send the headers the
+browser requires, and no in-page code can bypass that. Instead of the insecure
+Chrome flag, run the bundled zero-dependency proxy on the same machine; it
+forwards to your endpoint and adds the CORS headers:
+
+```bash
+# Node (or the Python version, tools/cors_proxy.py — identical flags)
+node tools/cors-proxy.js --upstream https://<model>-<project>.apps.<cluster>
+#   --port 8008    local port (default)
+#   --insecure     skip TLS verification for an internal/self-signed cluster CA
+```
+
+Then in the generator → Settings → Connection set **Base URL** to
+`http://localhost:8008/v1`, plus your model name and token (if required). No
+browser flags; fully offline (it only relays to the `--upstream` you give it);
+streaming and bearer-token auth pass through. If you already run LiteLLM,
+pointing it at the OpenShift model is an equivalent alternative.
+
 ### CORS (deployment requirement)
 
-The browser calls your LLM server directly, so the server must allow the
-generator's origin (including `null` when opened from `file://`):
+The browser calls your LLM server (or the proxy above) directly, so it must
+allow the generator's origin (including `null` when opened from `file://`):
 
 - **Ollama**: `OLLAMA_ORIGINS="*" ollama serve`
 - **vLLM**: `--allowed-origins '["*"]'`
