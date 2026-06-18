@@ -210,3 +210,18 @@ body {
   border-top: 1px solid rgba(15, 23, 42, 0.1);
   margin-top: 36px;
 }
+
+/* ---- Print / Save-as-PDF ---- */
+@media print {
+  /* Keep the gradient hero, KPI tints and chart colors in the PDF. */
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body { background: #fff; }
+  .container { max-width: 100%; padding: 0 12px; }
+  .hero { padding: 28px 20px; }
+  /* Don't split a card, chart, entity or flow across pages. */
+  .card, .entity-card, .chart-box, .flow, .kpi, table { break-inside: avoid; page-break-inside: avoid; }
+  .section-title { break-after: avoid; page-break-after: avoid; }
+  .entity-card:hover { transform: none; box-shadow: none; }
+  a[href]:after { content: ""; }   /* no URL footnotes */
+}
+@page { margin: 14mm; }

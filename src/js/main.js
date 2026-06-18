@@ -197,6 +197,7 @@
     frame.hidden = false;
     U.$('#result-placeholder').hidden = true;
     U.$('#btn-download').disabled = false;
+    U.$('#btn-pdf').disabled = false;
     U.$('#btn-copy').disabled = false;
     U.$('#btn-regen').disabled = false;
     U.$('#regen-input').disabled = false;
@@ -226,6 +227,31 @@
     }
   }
 
+  /* Export to PDF via the browser's print pipeline (FR-25). The report is
+     rendered into a transient sandboxed iframe (allow-scripts allow-modals,
+     NO allow-same-origin) so charts draw but the model output still can't
+     reach the generator's localStorage/keys (NFR-6); a tiny injected trigger
+     calls print() once charts have rendered. "Save as PDF" in the dialog
+     yields a script-free, portable, vector report. */
+  function exportPdf() {
+    if (!currentResult) return;
+    const printTrigger =
+      '<script>window.addEventListener("load",function(){setTimeout(function(){try{window.focus();window.print();}catch(e){}},700);});<\/script>';
+    let html = currentResult.html;
+    if (/<\/body>/i.test(html)) html = html.replace(/<\/body>/i, printTrigger + '</body>');
+    else html += printTrigger;
+
+    const frame = global.document.createElement('iframe');
+    frame.setAttribute('sandbox', 'allow-scripts allow-modals');
+    frame.setAttribute('aria-hidden', 'true');
+    frame.style.cssText = 'position:fixed;right:0;bottom:0;width:1px;height:1px;border:0;opacity:0;';
+    frame.srcdoc = html;
+    // Clean up shortly after the print dialog has had time to open.
+    frame.addEventListener('load', () => setTimeout(() => frame.remove(), 60000));
+    global.document.body.appendChild(frame);
+    IDG.ui.toast(t('pdf_hint'));
+  }
+
   function wireResult() {
     U.$('#btn-cancel').addEventListener('click', () => { if (abortCtl) abortCtl.abort(); });
     U.$('#btn-generate').addEventListener('click', () => generate(null));
@@ -238,6 +264,7 @@
     U.$('#btn-download').addEventListener('click', () => {
       if (currentResult) U.downloadBlob(downloadName(), 'text/html;charset=utf-8', currentResult.html);
     });
+    U.$('#btn-pdf').addEventListener('click', exportPdf);
     U.$('#btn-copy').addEventListener('click', copyResult);
     U.$('#btn-desktop').addEventListener('click', () => {
       U.$('#result-frame').classList.remove('mobile');

@@ -23,8 +23,10 @@ performance/metrics dashboard.
    preview, choose a palette, and **Generate**. Settings → Output has a
    **Detail level** (Concise / Balanced / Comprehensive) to control how much of
    the document the report covers.
-4. Download / copy the result — a single offline HTML file with the chart
-   library, stylesheet, and Heebo font subset all embedded. Regenerate with
+4. Export the result — **Download HTML** (a single offline file with the chart
+   library, stylesheet, and Heebo font embedded), **PDF** (opens the print
+   dialog → "Save as PDF" for a portable, script-free, vector report that
+   prints with correct colors and page breaks), or **Copy**. Regenerate with
    free-text feedback if you want changes.
 
 The only network traffic the generator ever produces is to the endpoint you

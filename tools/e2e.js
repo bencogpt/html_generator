@@ -267,6 +267,20 @@ const server = http.createServer((req, res) => {
   assert.ok(fill.frame >= fill.wrap - 4, `iframe fills pane: ${fill.frame} vs ${fill.wrap}`);
   console.log('✓ preview iframe fills the result pane');
 
+  // PDF export: clicking PDF spawns a transient sandboxed print iframe that
+  // (a) carries the report + a print trigger and (b) cannot reach the
+  // generator's localStorage (no allow-same-origin) — keeping keys safe.
+  await page.click('#btn-pdf');
+  const printFrame = await page.evaluate(() => {
+    const f = [...document.querySelectorAll('iframe')].find((x) => x.id !== 'result-frame');
+    if (!f) return null;
+    return { sandbox: f.getAttribute('sandbox'), hasReport: /<!DOCTYPE html>/i.test(f.srcdoc || ''), hasTrigger: /window\.print\(\)/.test(f.srcdoc || '') };
+  });
+  assert.ok(printFrame, 'PDF export created a print iframe');
+  assert.equal(printFrame.sandbox, 'allow-scripts allow-modals', 'print iframe sandboxed without same-origin (keys safe)');
+  assert.ok(printFrame.hasReport && printFrame.hasTrigger, 'print iframe carries the report + print trigger');
+  console.log('✓ PDF export spawns a secure sandboxed print frame');
+
   // metrics record (FR-40, acceptance #4): status=repaired, exact server usage
   const runs = await page.evaluate(() => JSON.parse(localStorage.getItem('idg.metrics.v1')));
   const run = runs[runs.length - 1];
