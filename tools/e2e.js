@@ -12,6 +12,7 @@
 
 const http = require('http');
 const path = require('path');
+const fs = require('fs');
 const assert = require('assert');
 const { chromium } = require('playwright');
 
@@ -280,6 +281,22 @@ const server = http.createServer((req, res) => {
   assert.equal(printFrame.sandbox, 'allow-scripts allow-modals', 'print iframe sandboxed without same-origin (keys safe)');
   assert.ok(printFrame.hasReport && printFrame.hasTrigger, 'print iframe carries the report + print trigger');
   console.log('✓ PDF export spawns a secure sandboxed print frame');
+
+  // Script-free HTML export: charts snapshotted to <img>, all <script> removed,
+  // still self-contained (no external refs).
+  const [download] = await Promise.all([
+    page.waitForEvent('download', { timeout: 30000 }),
+    page.click('#btn-static'),
+  ]);
+  const dlPath = await download.path();
+  const staticHtml = fs.readFileSync(dlPath, 'utf8');
+  assert.ok(/-static\.html$/.test(download.suggestedFilename()), 'static export filename: ' + download.suggestedFilename());
+  assert.ok(!/<script[\s>]/i.test(staticHtml), 'no <script> tags in static export');
+  assert.ok(!/<canvas[\s>]/i.test(staticHtml), 'no <canvas> in static export');
+  assert.ok(/<img[^>]+src="data:image\/png/i.test(staticHtml), 'charts converted to PNG images');
+  assert.ok(!/(?:src|href)=["'](?:https?:)?\/\//.test(staticHtml.replace(/src="data:[^"]*"/gi, '')), 'no external refs in static export');
+  assert.ok(/<!DOCTYPE html>/i.test(staticHtml) && /dir="rtl"/i.test(staticHtml), 'static export is a complete RTL document');
+  console.log('✓ script-free HTML export: scripts removed, charts → images, self-contained (' + Math.round(staticHtml.length / 1024) + ' KB)');
 
   // metrics record (FR-40, acceptance #4): status=repaired, exact server usage
   const runs = await page.evaluate(() => JSON.parse(localStorage.getItem('idg.metrics.v1')));

@@ -23,11 +23,13 @@ performance/metrics dashboard.
    preview, choose a palette, and **Generate**. Settings → Output has a
    **Detail level** (Concise / Balanced / Comprehensive) to control how much of
    the document the report covers.
-4. Export the result — **Download HTML** (a single offline file with the chart
-   library, stylesheet, and Heebo font embedded), **PDF** (opens the print
-   dialog → "Save as PDF" for a portable, script-free, vector report that
-   prints with correct colors and page breaks), or **Copy**. Regenerate with
-   free-text feedback if you want changes.
+4. Export the result, four ways: **Download HTML** (interactive single file —
+   Chart.js, stylesheet and Heebo font embedded), **PDF** (print dialog →
+   "Save as PDF"; portable, no scripts, correct colors and page breaks),
+   **Static HTML** (a script-free copy — charts are snapshotted to embedded
+   PNG images and every `<script>`/`<canvas>` is removed, so it renders with
+   JavaScript disabled / under strict CSP; chart interactivity becomes static),
+   or **Copy**. Regenerate with free-text feedback if you want changes.
 
 The only network traffic the generator ever produces is to the endpoint you
 configured. Legacy binary `.doc` files are rejected with a "re-save as .docx"

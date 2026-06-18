@@ -198,6 +198,7 @@
     U.$('#result-placeholder').hidden = true;
     U.$('#btn-download').disabled = false;
     U.$('#btn-pdf').disabled = false;
+    U.$('#btn-static').disabled = false;
     U.$('#btn-copy').disabled = false;
     U.$('#btn-regen').disabled = false;
     U.$('#regen-input').disabled = false;
@@ -252,6 +253,63 @@
     IDG.ui.toast(t('pdf_hint'));
   }
 
+  /* Export a script-free copy of the report (FR-25). Charts are snapshotted to
+     PNG <img> data-URIs and every <script> is removed, so the file has no JS
+     and no <canvas> yet looks identical and stays fully offline. The
+     conversion runs inside a sandboxed iframe (allow-scripts, NO same-origin),
+     so the model output still can't reach the generator's storage/keys
+     (NFR-6); it posts the converted HTML back via postMessage.
+     Trade-off: chart hover/tooltips become static (no scripts); CSS hover,
+     collapsibles and layout are preserved. */
+  const STATIC_CONVERTER =
+    '<script>(function(){function run(){try{' +
+    'var cs=document.querySelectorAll("canvas");' +
+    'for(var i=0;i<cs.length;i++){var c=cs[i],img=document.createElement("img");' +
+    'try{img.src=c.toDataURL("image/png");}catch(e){continue;}' +
+    'img.style.cssText=(c.getAttribute("style")||"")+";max-width:100%;height:auto;display:block;";' +
+    'if(c.className)img.className=c.className;img.alt="";' +
+    'if(c.parentNode)c.parentNode.replaceChild(img,c);}' +
+    'var ss=document.querySelectorAll("script");for(var j=0;j<ss.length;j++){if(ss[j].parentNode)ss[j].parentNode.removeChild(ss[j]);}' +
+    'var html="<!DOCTYPE html>\\n"+document.documentElement.outerHTML;' +
+    'parent.postMessage({__idgStatic:1,html:html},"*");' +
+    '}catch(e){parent.postMessage({__idgStatic:1,error:String(e&&e.message||e)},"*");}}' +
+    'if(document.readyState==="complete")setTimeout(run,1300);else window.addEventListener("load",function(){setTimeout(run,1300);});' +
+    '})();<\/script>';
+
+  function exportStaticHtml() {
+    if (!currentResult) return;
+    let html = currentResult.html;
+    html = /<\/body>/i.test(html) ? html.replace(/<\/body>/i, STATIC_CONVERTER + '</body>') : html + STATIC_CONVERTER;
+
+    const frame = global.document.createElement('iframe');
+    frame.setAttribute('sandbox', 'allow-scripts');     // opaque origin: no key access
+    frame.setAttribute('aria-hidden', 'true');
+    frame.style.cssText = 'position:fixed;right:0;bottom:0;width:1024px;height:768px;border:0;opacity:0;pointer-events:none;';
+
+    let done = false;
+    const cleanup = () => { window.removeEventListener('message', onMsg); if (frame.parentNode) frame.remove(); };
+    const onMsg = (e) => {
+      if (e.source !== frame.contentWindow || !e.data || !e.data.__idgStatic) return;
+      if (done) return;
+      done = true;
+      if (e.data.error || !e.data.html) {
+        IDG.ui.toast('✗ ' + (e.data.error || 'export failed'));
+        cleanup();
+        return;
+      }
+      const name = `${U.sanitizeBaseName(currentResult.run.source)}-infographic-${U.fileStamp()}-static.html`;
+      U.downloadBlob(name, 'text/html;charset=utf-8', e.data.html);
+      const leftover = IDG.post.lintExternal(e.data.html).length;
+      IDG.ui.toast(t('static_done') + (leftover ? ' ⚠' : ''));
+      cleanup();
+    };
+    window.addEventListener('message', onMsg);
+    setTimeout(() => { if (!done) { done = true; IDG.ui.toast('✗'); cleanup(); } }, 20000);
+    IDG.ui.toast(t('static_working'));
+    global.document.body.appendChild(frame);
+    frame.srcdoc = html;
+  }
+
   function wireResult() {
     U.$('#btn-cancel').addEventListener('click', () => { if (abortCtl) abortCtl.abort(); });
     U.$('#btn-generate').addEventListener('click', () => generate(null));
@@ -265,6 +323,7 @@
       if (currentResult) U.downloadBlob(downloadName(), 'text/html;charset=utf-8', currentResult.html);
     });
     U.$('#btn-pdf').addEventListener('click', exportPdf);
+    U.$('#btn-static').addEventListener('click', exportStaticHtml);
     U.$('#btn-copy').addEventListener('click', copyResult);
     U.$('#btn-desktop').addEventListener('click', () => {
       U.$('#result-frame').classList.remove('mobile');
