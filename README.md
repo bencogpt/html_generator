@@ -62,6 +62,11 @@ browser trust an untrusted cert — so for **OpenShift AI**, the reliable path
 is to front the model with **LiteLLM** (which allows browser CORS) and point
 the generator at the LiteLLM URL. See CORS below.
 
+Palettes: Vibrant Tech Blues (default), Colorful (multi-hue indigo/rose/amber/
+emerald — vibrant, distinct chart colors), Emerald Forest, Warm Sunset, Royal
+Violet, Slate Mono. Set in Settings → Output or the palette row on the main
+screen.
+
 ### Connecting without `--disable-web-security` (bundled CORS proxy)
 
 If your endpoint works from `curl`/LiteLLM but the generator can't reach it,

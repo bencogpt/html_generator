@@ -38,6 +38,15 @@
       bg: '#F8FAFC', gradA: '#0F172A', gradB: '#475569',
       series: ['#475569', '#94A3B8', '#1E293B', '#CBD5E1', '#64748B', '#A8B5C5'],
     },
+    // Multi-hue "vibrant modern" look from the Gemini reference infographics
+    // (indigo / rose / amber / emerald / sky / purple). The distinct series
+    // colors are what make pie & bar charts colorful rather than one-hue.
+    'colorful': {
+      label: 'Colorful',
+      primary: '#4F46E5', secondary: '#7C3AED', accent: '#F43F5E',
+      bg: '#EEF2FF', gradA: '#4338CA', gradB: '#DB2777',
+      series: ['#4F46E5', '#F43F5E', '#F59E0B', '#10B981', '#0EA5E9', '#A855F7'],
+    },
   };
 
   /* Connection presets (FR-30) — one-click starting points for common stacks.

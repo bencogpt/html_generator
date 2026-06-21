@@ -150,6 +150,15 @@ test('renderSystemPrompt fills placeholders', () => {
   assert.ok(sp.includes('#2563EB'));
   assert.ok(/try \{/.test(sp) && /catch/.test(sp), 'per-chart try/catch instruction present');
 });
+test('colorful palette exists and reaches the prompt', () => {
+  const s = IDG.store.load();
+  assert.ok(IDG.store.PALETTES.colorful, 'colorful palette registered');
+  assert.equal(IDG.store.PALETTES.colorful.series.length, 6);
+  s.output.palette = 'colorful';
+  const sp = IDG.prompt.renderSystemPrompt(s);
+  assert.ok(sp.includes('#F43F5E') && sp.includes('#10B981'), 'colorful series colors injected into prompt');
+  s.output.palette = 'vibrant-tech-blues';
+});
 test('detail level changes section guidance', () => {
   const s = IDG.store.load();
   s.output.detailLevel = 'concise';
