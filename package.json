@@ -9,6 +9,7 @@
     "test:proxy": "node tools/proxy-test.js",
     "audit": "node tools/build.js && node tools/audit.js",
     "validate:charts": "node tools/build.js && node tools/validate-charts.js",
+    "validate:report": "node tools/build.js && node tools/validate-report.js",
     "cheatsheet": "node tools/build.js && node tools/make-cheatsheet.js",
     "e2e": "node tools/build.js && node tools/e2e.js",
     "screenshots": "node tools/screenshots.js",
