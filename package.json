@@ -8,6 +8,7 @@
     "test": "node tools/test.js",
     "test:proxy": "node tools/proxy-test.js",
     "audit": "node tools/build.js && node tools/audit.js",
+    "validate:charts": "node tools/build.js && node tools/validate-charts.js",
     "e2e": "node tools/build.js && node tools/e2e.js",
     "screenshots": "node tools/screenshots.js",
     "proxy": "node tools/cors-proxy.js"

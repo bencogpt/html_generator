@@ -60,6 +60,7 @@ const CHARTS_HTML = `<!DOCTYPE html>
 <section class="card"><h2 class="section-title">פולאר</h2><div class="chart-box small"><canvas id="cPolar"></canvas></div></section>
 <section class="card"><h2 class="section-title">מפת חום</h2><div class="chart-box tall"><canvas id="cHeat"></canvas></div></section>
 <section class="card"><h2 class="section-title">מפה</h2><div class="chart-box map"><canvas id="cMap"></canvas></div></section>
+<section class="card"><h2 class="section-title">בועות</h2><div class="chart-box map"><canvas id="cBub"></canvas></div></section>
 <section class="card"><h2 class="section-title">תהליך</h2>
 <div class="flow">
 <div class="flow-step"><span class="step-title">שלב א</span>חישה</div>
@@ -74,6 +75,7 @@ document.addEventListener('DOMContentLoaded',function(){
   new Chart(document.getElementById('cPolar'),{type:'polarArea',data:{labels:['א','ב','ג'],datasets:[{data:[11,17,9]}]},options:{responsive:true,maintainAspectRatio:false}});
   IDG_CHARTS.heatmap('cHeat',['שורה1','שורה2'],['A','B','C'],[[1,5,9],[7,3,2]],{label:'עוצמה'});
   IDG_CHARTS.choropleth('cMap',{'Israel':40,'United States':25,'Germany':15},{label:'נתח'});
+  IDG_CHARTS.bubbleMap('cBub',{'Israel':40,'United States':25,'France':10},{label:'נוכחות'});
 });
 </scr` + `ipt>
 </body>
@@ -341,6 +343,10 @@ const server = http.createServer((req, res) => {
     heatPoints: window.Chart.getChart('cHeat').data.datasets[0].data.length,
     israel: !!window.IDG_GEO.feature('Israel'),
     usaAlias: !!window.IDG_GEO.feature('USA'),
+    // bubbleMap: each bubble must be positioned at a real centroid (not null)
+    bubblePositioned: window.Chart.getChart('cBub').getDatasetMeta(0).data.every(
+      (el) => typeof el.x === 'number' && !isNaN(el.x) && typeof el.y === 'number' && !isNaN(el.y)),
+    bubbleCount: window.Chart.getChart('cBub').getDatasetMeta(0).data.length,
     // flow-arrow contains a stray "←"; the fix must hide it and draw one CSS chevron
     flow: (function () {
       var a = document.querySelector('.flow-arrow');
@@ -355,13 +361,15 @@ const server = http.createServer((req, res) => {
   assert.equal(chartInfo.mapPoints, 177, 'choropleth bound to all countries');
   assert.equal(chartInfo.heatPoints, 6, 'heatmap matrix points (2x3)');
   assert.ok(chartInfo.israel && chartInfo.usaAlias, 'country name + alias lookup works');
+  assert.equal(chartInfo.bubbleCount, 3, 'bubbleMap has all 3 points');
+  assert.ok(chartInfo.bubblePositioned, 'bubbleMap bubbles placed at country centroids (not null)');
   // double-arrow regression: stray glyph hidden (font-size 0), single CSS chevron drawn
   assert.equal(chartInfo.flow.fontPx, '0px', 'stray arrow glyph hidden (no double arrow)');
   assert.ok(chartInfo.flow.afterContent === '""' || chartInfo.flow.afterContent === 'none' || chartInfo.flow.afterContent === '', 'chevron uses empty content, not a glyph');
   assert.ok(chartInfo.flow.afterW >= 10, 'CSS chevron rendered (width ' + chartInfo.flow.afterW + ')');
   const chartsSrcdoc = await page.getAttribute('#result-frame', 'srcdoc');
   assert.ok(!/(?:src|href)=["'](?:https?:)?\/\//.test(chartsSrcdoc), 'map/heatmap artifact has no external refs');
-  console.log('✓ expanded charts: polarArea + heatmap + choropleth render offline (' + chartInfo.countries + ' countries embedded)');
+  console.log('✓ expanded charts: polarArea + heatmap + choropleth + bubbleMap render offline (' + chartInfo.countries + ' countries embedded)');
   console.log('✓ flow diagram: stray arrow glyph hidden, single CSS chevron (font-size ' + chartInfo.flow.fontPx + ', chevron ' + chartInfo.flow.afterW + 'px)');
 
   // legacy .doc rejection (FR-12 / acceptance #6)

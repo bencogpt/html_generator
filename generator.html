@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Interactive Infographic Generator</title>
-<!-- built 2026-06-23T08:22:12.296Z · chart.js 4.4.0 + matrix/geo plugins · mammoth.js 1.8.0 · world-atlas 110m · system fonts -->
+<!-- built 2026-06-23T08:31:40.026Z · chart.js 4.4.0 + matrix/geo plugins · mammoth.js 1.8.0 · world-atlas 110m · system fonts -->
 <style>
 /* Generator UI stylesheet. RTL-aware via logical properties + [dir] rules. */
 :root {
@@ -792,6 +792,34 @@ len1=val.length;len1>k;k++)item=val[k],childNode={},childNode[key]=item,lastChil
 
   W.IDG_GEO = GEO;
 
+  /* Approximate [lon,lat] centroid of a country feature (bbox centre of its
+     largest ring) — good enough to place a bubble inside the country. */
+  function centroid(f) {
+    try {
+      var g = f && f.geometry;
+      if (!g) return null;
+      var ring = null;
+      if (g.type === 'Polygon') ring = g.coordinates[0];
+      else if (g.type === 'MultiPolygon') {
+        var best = 0;
+        g.coordinates.forEach(function (poly) {
+          if (poly[0] && poly[0].length > best) { best = poly[0].length; ring = poly[0]; }
+        });
+      }
+      if (!ring || !ring.length) return null;
+      var minx = Infinity, miny = Infinity, maxx = -Infinity, maxy = -Infinity;
+      for (var i = 0; i < ring.length; i++) {
+        var p = ring[i];
+        if (p[0] < minx) minx = p[0];
+        if (p[0] > maxx) maxx = p[0];
+        if (p[1] < miny) miny = p[1];
+        if (p[1] > maxy) maxy = p[1];
+      }
+      return [(minx + maxx) / 2, (miny + maxy) / 2];
+    } catch (e) { return null; }
+  }
+  GEO.centroid = centroid;
+
   /* ---------- IDG_CHARTS: one-call builders ---------- */
   function commonPlugins(rtl) {
     return { legend: { rtl: rtl, textDirection: rtl ? 'rtl' : 'ltr' } };
@@ -900,22 +928,27 @@ len1=val.length;len1>k;k++)item=val[k],childNode={},childNode[key]=item,lastChil
     },
 
     /* Proportional bubble map.
-       valuesByName: { "Israel": 12, ... }  opts: { label } */
+       valuesByName: { "Israel": 12, ... }  opts: { label }
+       BubbleMap needs explicit longitude/latitude per point (it does not derive
+       them from a feature), so we place each bubble at the country centroid. */
     bubbleMap: function (target, valuesByName, opts) {
       var el = ctxOf(target);
       if (!el || !GEO.ready) return null;
       opts = opts || {};
       var rtl = isRTL();
       var prim = cssVar('--c-primary', '#2563EB');
-      var data = [];
+      var data = [], labels = [];
       for (var key in valuesByName) {
         var f = GEO.feature(key);
         if (!f) continue;
-        data.push({ feature: f, value: +valuesByName[key] });
+        var c = centroid(f);
+        if (!c) continue;
+        labels.push(f.properties.name);
+        data.push({ longitude: c[0], latitude: c[1], value: +valuesByName[key] });
       }
       return new W.Chart(el, {
         type: 'bubbleMap',
-        data: { labels: data.map(function (d) { return d.feature.properties.name; }),
+        data: { labels: labels,
           datasets: [{ label: opts.label || '', outline: GEO.outline, backgroundColor: prim, data: data }] },
         options: {
           responsive: true, maintainAspectRatio: false,
