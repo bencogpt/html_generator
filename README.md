@@ -7,7 +7,7 @@ CSS-only flowchart — using an **internal, OpenAI-compatible LLM endpoint**
 (vLLM, Ollama, llama.cpp server, LM Studio, TGI…).
 
 Built per the v1.1 specification: air-gapped friendly, zero external runtime
-dependencies, system fonts (no embedded webfont), full RTL support, and a
+dependencies, embedded Heebo Hebrew/Latin font, full RTL support, and a
 performance/metrics dashboard.
 
 ## Using it
@@ -24,7 +24,7 @@ performance/metrics dashboard.
    **Detail level** (Concise / Balanced / Comprehensive) to control how much of
    the document the report covers.
 4. Export the result, four ways: **Download HTML** (interactive single file —
-   Chart.js and stylesheet embedded), **PDF** (print dialog →
+   Chart.js, stylesheet and Heebo font embedded), **PDF** (print dialog →
    "Save as PDF"; portable, no scripts, correct colors and page breaks),
    **Static HTML** (a script-free copy — charts are snapshotted to embedded
    PNG images and every `<script>`/`<canvas>` is removed, so it renders with
@@ -128,14 +128,17 @@ vendor/
   topojson-client.min.js  topojson-client (ISC) — world topology → features
   world-countries-110m.json  world-atlas (ISC) — 177 country borders, embedded
   mammoth.browser.min.js  mammoth.js 1.8.0 (BSD-2) — DOCX extraction
+  fonts/heebo-*.woff2     Heebo subsets (OFL), weights 300/400/600/800,
+                          Hebrew + Basic Latin, ~15 KB each
 src/output/
   base.css            utility CSS injected into every generated infographic
   chart-extras.js     IDG_CHARTS/IDG_GEO helper runtime injected into outputs
 tools/
   build.js            assembles everything into generator.html (no deps)
+  subset_fonts.py     regenerates the embedded Heebo subsets (fonttools + brotli)
   test.js             node unit tests for the pure logic
-  audit.js            static audit of the built file (no fonts, no eval, no
-                      sourcemaps, no functional external references)
+  audit.js            static audit of the built file (no eval, no sourcemaps,
+                      no functional external references)
   e2e.js              headless-Chromium end-to-end test with a mock
                       OpenAI-compatible server (needs `npx playwright install chromium`)
   cors-proxy.js / cors_proxy.py   zero-dependency local CORS proxy (Node/Python)

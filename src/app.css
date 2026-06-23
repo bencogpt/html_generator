@@ -19,7 +19,7 @@
 [hidden] { display: none !important; }
 html, body { margin: 0; height: 100%; }
 body {
-  font-family: system-ui, -apple-system, 'Segoe UI', 'Arial', 'Helvetica Neue', sans-serif;
+  font-family: 'Heebo', system-ui, -apple-system, 'Segoe UI', Arial, sans-serif;
   background: var(--bg);
   color: var(--text);
   font-size: 14.5px;

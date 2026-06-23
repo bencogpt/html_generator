@@ -10,6 +10,9 @@ const path = require('path');
 
 const ROOT = path.resolve(__dirname, '..');
 const read = (p) => fs.readFileSync(path.join(ROOT, p), 'utf8');
+const readBin = (p) => fs.readFileSync(path.join(ROOT, p));
+
+const FONT_WEIGHTS = [300, 400, 600, 800];
 
 /* Order matters: later modules use earlier ones at definition time. */
 const JS_MODULES = [
@@ -46,12 +49,24 @@ function stripSourceMaps(js) {
   return js.replace(/^[ \t]*\/\/[#@]\s*sourceMappingURL=.*$/gm, '');
 }
 
+/* Embedded Heebo subset (OFL): Hebrew + Basic Latin, weights 300/400/600/800,
+   base64 WOFF2. Used by the generator UI and injected into every output so
+   typography matches even on machines with no Hebrew fonts and no network. */
+function buildFontCss() {
+  return FONT_WEIGHTS.map((w) => {
+    const b64 = readBin(`vendor/fonts/heebo-${w}.woff2`).toString('base64');
+    return `@font-face{font-family:'Heebo';font-style:normal;font-weight:${w};font-display:swap;` +
+      `src:url(data:font/woff2;base64,${b64}) format('woff2');}`;
+  }).join('\n');
+}
+
 function main() {
   const outFile = process.argv[2] || 'generator.html';
 
   const shell = read('src/shell.html');
   const appCss = read('src/app.css');
   const baseCss = read('src/output/base.css');
+  const fontCss = buildFontCss();
   const mammothSrc = stripSourceMaps(read('vendor/mammoth.browser.min.js'));
   const appJs = JS_MODULES.map((m) => `/* === ${m} === */\n${read(m)}`).join('\n');
 
@@ -78,21 +93,26 @@ function main() {
     throw new Error('chart bundle contains </script — would break the script element');
   }
 
-  // Only the base output stylesheet travels as a JS string (for injection at
-  // {{BASE_CSS}}); the chart bundle lives in the script element above.
-  const vendorJs = 'window.IDG_ASSETS = {\nBASE_CSS: ' + jsonStringSafe(JSON.stringify(baseCss)) + '\n};';
+  // The base output stylesheet and embedded font travel as JS strings (for
+  // injection at {{BASE_CSS}}); the chart bundle lives in the script element.
+  const vendorJs =
+    'window.IDG_ASSETS = {\n' +
+    `BASE_CSS: ${jsonStringSafe(JSON.stringify(baseCss))},\n` +
+    `FONT_CSS: ${jsonStringSafe(JSON.stringify(fontCss))}\n` +
+    '};';
 
-  const buildInfo = `built ${new Date().toISOString()} · chart.js 4.4.0 + matrix/geo plugins · mammoth.js 1.8.0 · world-atlas 110m · system fonts`;
+  const buildInfo = `built ${new Date().toISOString()} · chart.js 4.4.0 + matrix/geo plugins · mammoth.js 1.8.0 · world-atlas 110m · Heebo subset (OFL) w${FONT_WEIGHTS.join('/')}`;
 
   let html = shell
     .replace('{{BUILD_INFO}}', buildInfo)
+    .replace('{{FONT_CSS}}', fontCss)
     .replace('{{APP_CSS}}', appCss)
     .replace('{{MAMMOTH_JS}}', () => scriptSafe(mammothSrc))
     .replace('{{CHART_BUNDLE}}', () => chartBundle)   // already verified </script-free
     .replace('{{VENDOR_JS}}', () => vendorJs)
     .replace('{{APP_JS}}', () => scriptSafe(appJs));
 
-  const leftovers = html.match(/\{\{(BUILD_INFO|APP_CSS|MAMMOTH_JS|CHART_BUNDLE|VENDOR_JS|APP_JS)\}\}/g);
+  const leftovers = html.match(/\{\{(BUILD_INFO|FONT_CSS|APP_CSS|MAMMOTH_JS|CHART_BUNDLE|VENDOR_JS|APP_JS)\}\}/g);
   if (leftovers) throw new Error('Unreplaced build tokens: ' + leftovers.join(', '));
 
   fs.writeFileSync(path.join(ROOT, outFile), html);
@@ -100,7 +120,7 @@ function main() {
   const size = Buffer.byteLength(html);
   const mb = (size / 1024 / 1024).toFixed(2);
   console.log(`${outFile}: ${size.toLocaleString()} bytes (${mb} MB)`);
-  console.log(`  chart bundle: ${chartBundle.length.toLocaleString()} · mammoth: ${mammothSrc.length.toLocaleString()} · app js: ${appJs.length.toLocaleString()} · app css: ${appCss.length.toLocaleString()}`);
+  console.log(`  chart bundle: ${chartBundle.length.toLocaleString()} · mammoth: ${mammothSrc.length.toLocaleString()} · fonts(css): ${fontCss.length.toLocaleString()} · app js: ${appJs.length.toLocaleString()} · app css: ${appCss.length.toLocaleString()}`);
   if (size > 6 * 1024 * 1024) throw new Error('Exceeds the 6 MB hard ceiling (spec §3.2)');
   if (size > 4 * 1024 * 1024) console.warn('WARNING: above the 4 MB target (spec §3.2)');
 }

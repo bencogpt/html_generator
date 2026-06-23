@@ -16,10 +16,7 @@ function check(name, cond, detail) {
   else { failed++; console.error('  ✗ ' + name + (detail ? '\n    ' + detail : '')); }
 }
 
-// 1. No embedded fonts anywhere (removed per request — system fonts now).
-check('no embedded base64 fonts', !/data:font\/woff2|@font-face/i.test(html));
-
-// 2. Our own application code uses no eval / new Function (avoids relying on
+// 1. Our own application code uses no eval / new Function (avoids relying on
 //    CSP unsafe-eval in our code). NOTE: the vendored mammoth.js library uses
 //    new Function internally for DOCX parsing — that's inside a trusted MIT
 //    dependency and out of scope here; we check our src/ only.
@@ -31,10 +28,10 @@ const appSrc = fs.readdirSync(path.resolve(__dirname, '..', 'src/js'))
 const codeOnly = appSrc.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
 check('our app code has no eval/new Function', !/\bnew Function\s*\(|[^.\w]eval\s*\(/.test(codeOnly));
 
-// 3. No sourceMappingURL pragmas (stripped from vendored libs).
+// 2. No sourceMappingURL pragmas (stripped from vendored libs).
 check('no sourceMappingURL pragmas', !/sourceMappingURL/.test(html));
 
-// 4. No functional external references: no loadable http(s) src/href, no
+// 3. No functional external references: no loadable http(s) src/href, no
 //    CDN script/link, no @import, no fetch/XHR to a URL. (License-banner and
 //    XML-namespace URL *strings* are inert and allowed.)
 const functional = [
@@ -47,7 +44,7 @@ check('no functional external resource references',
   !functional.some((re) => re.test(html)),
   functional.map((re) => (re.exec(html) || [''])[0]).filter(Boolean).join(' ; '));
 
-// 5. The chart bundle is a real <script> element (not eval'd), so injection
+// 4. The chart bundle is a real <script> element (not eval'd), so injection
 //    reads its textContent.
 check('chart bundle shipped as <script id="idg-chart-bundle">', /<script id="idg-chart-bundle">/.test(html));
 

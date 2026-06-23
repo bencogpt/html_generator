@@ -343,7 +343,7 @@
     // The chart bundle already ran as a real <script> (Chart is global for the
     // dashboard — no runtime code evaluation). We read that same element's
     // source to inject the identical, pinned library into reports (FR-23).
-    IDG.assets = Object.assign({ CHART_SRC: '', BASE_CSS: '' }, global.IDG_ASSETS);
+    IDG.assets = Object.assign({ CHART_SRC: '', BASE_CSS: '', FONT_CSS: '' }, global.IDG_ASSETS);
     const bundleEl = global.document.getElementById('idg-chart-bundle');
     if (bundleEl) IDG.assets.CHART_SRC = bundleEl.textContent;
     IDG.store.load();

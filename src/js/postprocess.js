@@ -55,7 +55,7 @@
      tokens, or before </head> when the model omitted them (FR-23). */
   function injectAssets(html, assets) {
     let s = String(html || '');
-    const cssBlock = '<style>\n' + assets.BASE_CSS + '\n</style>';
+    const cssBlock = '<style>\n' + (assets.FONT_CSS ? assets.FONT_CSS + '\n' : '') + assets.BASE_CSS + '\n</style>';
     const palBlock = assets.PALETTE_CSS ? '<style>' + assets.PALETTE_CSS + '</style>' : '';
     // Escape any literal </script in the bundle so it can't close the tag early.
     const libBlock = '<script>\n' + String(assets.CHART_SRC).replace(/<\/script/gi, '<\\/script') + '\n</script>';

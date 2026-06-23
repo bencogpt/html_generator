@@ -152,7 +152,10 @@ const server = http.createServer((req, res) => {
   assert.ok(await page.evaluate(() => typeof window.Chart === 'function'), 'Chart.js loaded at boot');
   assert.ok(await page.evaluate(() => typeof window.mammoth === 'object'), 'mammoth available');
   assert.ok(await page.evaluate(() => !!document.getElementById('idg-chart-bundle')), 'chart bundle is a <script> element');
-  console.log('✓ boot (chart bundle as <script>, mammoth, i18n)');
+  assert.ok(await page.evaluate(() =>
+    [...document.styleSheets].some((s) => { try { return [...s.cssRules].some((r) => r.cssText.includes('Heebo')); } catch (e) { return false; } })
+  ), 'embedded Heebo @font-face present');
+  console.log('✓ boot (embedded font, chart bundle as <script>, mammoth, i18n)');
 
   // ingestion via paste (shares the FR-1x pipeline)
   await page.click('#paste-details summary');
@@ -246,7 +249,7 @@ const server = http.createServer((req, res) => {
   assert.ok(!srcdoc.includes('fonts.googleapis.com'), 'external font link removed');
   assert.ok(srcdoc.includes('Chart.js'), 'chart lib injected');
   assert.ok(srcdoc.includes('--c-primary'), 'base css injected');
-  assert.ok(!/data:font\/woff2|@font-face/.test(srcdoc), 'no embedded font in exported report (optimization)');
+  assert.ok(/@font-face[^}]*Heebo/.test(srcdoc) && srcdoc.includes('data:font/woff2'), 'embedded Heebo font injected into output');
   assert.ok(!/(?:src|href)=["'](?:https?:)?\/\//.test(srcdoc), 'no external refs in artifact');
   assert.ok(await page.getAttribute('#result-frame', 'sandbox') === 'allow-scripts', 'sandboxed iframe (NFR-6)');
   console.log('✓ generation: fences stripped, repair pass ran, assets injected, artifact clean');
