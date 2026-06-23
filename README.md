@@ -138,7 +138,7 @@ tools/
   subset_fonts.py     regenerates the embedded Heebo subsets (fonttools + brotli)
   test.js             node unit tests for the pure logic
   audit.js            static audit of the built file (no eval, no sourcemaps,
-                      no functional external references)
+                      no functional external references, no hardcoded secrets)
   e2e.js              headless-Chromium end-to-end test with a mock
                       OpenAI-compatible server (needs `npx playwright install chromium`)
   cors-proxy.js / cors_proxy.py   zero-dependency local CORS proxy (Node/Python)

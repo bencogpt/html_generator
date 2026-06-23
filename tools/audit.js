@@ -48,5 +48,33 @@ check('no functional external resource references',
 //    reads its textContent.
 check('chart bundle shipped as <script id="idg-chart-bundle">', /<script id="idg-chart-bundle">/.test(html));
 
+// 5. No hardcoded secrets in the application source (the code that ships).
+//    High-signal credential patterns only. The user's LLM token is never
+//    hardcoded — it is entered at runtime and kept session-only by default.
+const SRC_DIRS = ['src/js', 'src/output'];
+const SRC_FILES = ['src/shell.html', 'src/app.css'];
+const srcFiles = SRC_FILES.concat(
+  SRC_DIRS.flatMap((d) => fs.readdirSync(path.resolve(__dirname, '..', d)).map((f) => d + '/' + f))
+);
+const SECRET_PATTERNS = [
+  [/sk-[A-Za-z0-9]{16,}/, 'OpenAI-style key'],
+  [/AKIA[0-9A-Z]{16}/, 'AWS access key'],
+  [/gh[pousr]_[A-Za-z0-9]{20,}/, 'GitHub token'],
+  [/AIza[0-9A-Za-z_-]{30,}/, 'Google API key'],
+  [/xox[baprs]-[A-Za-z0-9-]{10,}/, 'Slack token'],
+  [/-----BEGIN [A-Z ]*PRIVATE KEY-----/, 'private key'],
+  [/eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]+/, 'JWT'],
+  [/(?:Authorization|Bearer)\s*[:=]?\s*["'`]?Bearer\s+[A-Za-z0-9._-]{20,}/, 'hardcoded bearer token'],
+];
+const secretHits = [];
+for (const rel of srcFiles) {
+  const txt = fs.readFileSync(path.resolve(__dirname, '..', rel), 'utf8');
+  for (const [re, label] of SECRET_PATTERNS) {
+    const mm = txt.match(re);
+    if (mm) secretHits.push(`${rel}: ${label} (${mm[0].slice(0, 24)}…)`);
+  }
+}
+check('no hardcoded secrets in app source', secretHits.length === 0, secretHits.join(' ; '));
+
 console.log(failed ? `\nAUDIT FAILED (${failed})` : '\nAudit clean');
 process.exit(failed ? 1 : 0);
