@@ -339,16 +339,13 @@
 
   /* ---------- boot ---------- */
 
-  function installChart() {
-    // Vendored Chart.js is shipped once, as a string (it is also injected into
-    // every generated artifact). Evaluate it here for the dashboard charts.
-    // This evaluates our own pinned asset, never model output (NFR-6).
-    try { new Function(IDG.assets.CHART_SRC)(); } catch (e) { /* dashboard charts disabled */ }
-  }
-
   function init() {
-    IDG.assets = global.IDG_ASSETS || { CHART_SRC: '', BASE_CSS: '', FONT_CSS: '' };
-    installChart();
+    // The chart bundle already ran as a real <script> (Chart is global for the
+    // dashboard — no runtime code evaluation). We read that same element's
+    // source to inject the identical, pinned library into reports (FR-23).
+    IDG.assets = Object.assign({ CHART_SRC: '', BASE_CSS: '' }, global.IDG_ASSETS);
+    const bundleEl = global.document.getElementById('idg-chart-bundle');
+    if (bundleEl) IDG.assets.CHART_SRC = bundleEl.textContent;
     IDG.store.load();
     applyLanguage();
     IDG.ui.wireCommon();

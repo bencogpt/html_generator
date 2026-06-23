@@ -145,14 +145,12 @@ const server = http.createServer((req, res) => {
   const url = 'file://' + path.resolve(__dirname, '..', 'generator.html');
   await page.goto(url);
 
-  // boot: i18n applied, Chart installed from the embedded string
+  // boot: i18n applied, Chart loaded via the <script> bundle (no eval), mammoth ready
   await page.waitForFunction(() => document.querySelector('[data-i18n="app_title"]').textContent.length > 0);
-  assert.ok(await page.evaluate(() => typeof window.Chart === 'function'), 'Chart.js installed at boot');
+  assert.ok(await page.evaluate(() => typeof window.Chart === 'function'), 'Chart.js loaded at boot');
   assert.ok(await page.evaluate(() => typeof window.mammoth === 'object'), 'mammoth available');
-  assert.ok(await page.evaluate(() =>
-    [...document.styleSheets].some((s) => { try { return [...s.cssRules].some((r) => r.cssText.includes('Heebo')); } catch (e) { return false; } })
-  ), 'embedded Heebo @font-face present');
-  console.log('✓ boot (font, chart lib, mammoth, i18n)');
+  assert.ok(await page.evaluate(() => !!document.getElementById('idg-chart-bundle')), 'chart bundle is a <script> element');
+  console.log('✓ boot (chart bundle as <script>, mammoth, i18n)');
 
   // ingestion via paste (shares the FR-1x pipeline)
   await page.click('#paste-details summary');
@@ -246,7 +244,7 @@ const server = http.createServer((req, res) => {
   assert.ok(!srcdoc.includes('fonts.googleapis.com'), 'external font link removed');
   assert.ok(srcdoc.includes('Chart.js'), 'chart lib injected');
   assert.ok(srcdoc.includes('--c-primary'), 'base css injected');
-  assert.ok(srcdoc.includes("font-family:'Heebo'"), 'heebo @font-face injected into output');
+  assert.ok(!/data:font\/woff2|@font-face/.test(srcdoc), 'no embedded font in exported report (optimization)');
   assert.ok(!/(?:src|href)=["'](?:https?:)?\/\//.test(srcdoc), 'no external refs in artifact');
   assert.ok(await page.getAttribute('#result-frame', 'sandbox') === 'allow-scripts', 'sandboxed iframe (NFR-6)');
   console.log('✓ generation: fences stripped, repair pass ran, assets injected, artifact clean');

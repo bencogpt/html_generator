@@ -119,10 +119,11 @@ test('stripExternal removes refs', () => {
   assert.equal(IDG.post.lintExternal(IDG.post.stripExternal(dirty)).length, 0);
 });
 test('injectAssets replaces tokens', () => {
-  const assets = { CHART_SRC: '/*chart*/', BASE_CSS: '/*base*/', FONT_CSS: '/*font*/', PALETTE_CSS: ':root{}' };
+  const assets = { CHART_SRC: '/*chart*/', BASE_CSS: '/*base*/', PALETTE_CSS: ':root{}' };
   const r = IDG.post.injectAssets('<html><head>{{BASE_CSS}}\n{{CHART_LIB}}</head><body></body></html>', assets);
   assert.ok(r.usedTokens);
-  assert.ok(r.html.includes('/*chart*/') && r.html.includes('/*base*/') && r.html.includes('/*font*/'));
+  assert.ok(r.html.includes('/*chart*/') && r.html.includes('/*base*/'));
+  assert.ok(!/data:font\/woff2|@font-face/.test(r.html), 'no embedded font injected');
   assert.ok(!r.html.includes('{{'));
 });
 test('injectAssets falls back to </head> when tokens missing (FR-23)', () => {

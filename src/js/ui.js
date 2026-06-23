@@ -515,7 +515,7 @@
       const rtl = IDG.i18n.dir === 'rtl';
       const common = {
         responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { rtl, textDirection: IDG.i18n.dir, labels: { font: { family: 'Heebo' } } } },
+        plugins: { legend: { rtl, textDirection: IDG.i18n.dir } },
       };
 
       if (this.charts.tokens) this.charts.tokens.destroy();

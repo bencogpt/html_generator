@@ -87,7 +87,7 @@
 
   /* ---------- IDG_CHARTS: one-call builders ---------- */
   function commonPlugins(rtl) {
-    return { legend: { rtl: rtl, textDirection: rtl ? 'rtl' : 'ltr', labels: { font: { family: 'Heebo' } } } };
+    return { legend: { rtl: rtl, textDirection: rtl ? 'rtl' : 'ltr' } };
   }
 
   var IDG_CHARTS = {
@@ -144,8 +144,8 @@
             },
           },
           scales: {
-            x: { type: 'category', labels: cols, position: rtl ? 'top' : 'bottom', grid: { display: false }, ticks: { font: { family: 'Heebo' } } },
-            y: { type: 'category', labels: rows, offset: true, reverse: true, grid: { display: false }, ticks: { font: { family: 'Heebo' } } },
+            x: { type: 'category', labels: cols, position: rtl ? 'top' : 'bottom', grid: { display: false } },
+            y: { type: 'category', labels: rows, offset: true, reverse: true, grid: { display: false } },
           },
         },
       });
