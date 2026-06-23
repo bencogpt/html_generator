@@ -65,6 +65,7 @@
   .nav-links button:hover { background: var(--fill); }
   .nav-links button.active { background: var(--primary-tint); color: var(--primary); font-weight: 700; }
   .topbar-spacer { flex: 1; }
+  .sync-status { font-size: 12px; font-weight: 600; color: var(--muted); white-space: nowrap; padding: 4px 6px; }
   .topbar select {
     background: var(--fill); color: var(--text); border: none;
     border-radius: 99px; padding: 7px 12px; font-size: 13px; max-width: 170px;
@@ -330,6 +331,7 @@
     <button data-view="settings">הגדרות</button>
   </div>
   <div class="topbar-spacer"></div>
+  <span id="sync-status" class="sync-status" aria-live="polite"></span>
   <select id="active-user-select" title="המשתמש הפעיל" aria-label="המשתמש הפעיל"></select>
   <button class="btn-new-task" id="btn-new-task">+ משימה חדשה</button>
 </nav>
@@ -456,7 +458,7 @@
 
       <div class="card">
         <h3>גיבוי ושחזור</h3>
-        <p class="hint">הנתונים נשמרים בדפדפן של מחשב זה בלבד. ניקוי נתוני אתרים בדפדפן ימחק את כל המידע — מומלץ לגבות באופן קבוע.</p>
+        <p class="hint" id="storage-mode-line"></p>
         <p class="hint" id="last-backup-line"></p>
         <div style="display:flex; gap:8px; flex-wrap:wrap">
           <button class="btn btn-primary" id="btn-export-json">ייצוא גיבוי (JSON)</button>
@@ -632,30 +634,182 @@ function defaultData() {
   };
 }
 
-function loadData() {
+/* Fill in any missing parts of a parsed data object (old/partial backups). */
+function normalize(d) {
+  const base = defaultData();
+  if (!d || typeof d !== "object") return base;
+  d.team = Array.isArray(d.team) ? d.team : [];
+  d.categories = Array.isArray(d.categories) && d.categories.length ? d.categories : base.categories;
+  d.tasks = Array.isArray(d.tasks) ? d.tasks : [];
+  d.milestones = Array.isArray(d.milestones) ? d.milestones : [];
+  d.settings = Object.assign(base.settings, d.settings || {});
+  return d;
+}
+
+/* Read from the local browser cache (used as offline fallback). */
+function loadLocal() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) {
-      const d = JSON.parse(raw);
-      if (d && typeof d === "object") {
-        // Defensive completion of missing parts (old/partial backups)
-        const base = defaultData();
-        d.team = Array.isArray(d.team) ? d.team : [];
-        d.categories = Array.isArray(d.categories) && d.categories.length ? d.categories : base.categories;
-        d.tasks = Array.isArray(d.tasks) ? d.tasks : [];
-        d.milestones = Array.isArray(d.milestones) ? d.milestones : [];
-        d.settings = Object.assign(base.settings, d.settings || {});
-        return d;
-      }
-    }
+    if (raw) return normalize(JSON.parse(raw));
   } catch (e) { /* corrupted storage — start fresh */ }
   return defaultData();
 }
 
-let data = loadData();
+let data = defaultData();
 
+/* =========================================================
+   Sync layer
+   --------------------------------------------------------
+   When this file is served from the IIS site together with the
+   "data.ashx" handler, all users share ONE dataset stored on the
+   server. The flow is:
+     • on load   -> GET  data.ashx        (shared data + ETag version)
+     • on change -> PUT  data.ashx        (saves the whole document)
+     • every few seconds -> GET to pick up other people's changes
+   If the handler is unreachable (e.g. the file was opened directly,
+   or hosted as plain static files), it transparently falls back to
+   the original single-machine LocalStorage mode.
+   ========================================================= */
+const API_URL = "data.ashx";
+let serverMode = false;       // true once the API answered successfully
+let serverVersion = null;     // ETag of the last data we loaded from the server
+let saveInFlight = false;
+let savePending = false;
+let pollTimer = null;
+
+function cacheLocal() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch (e) { /* quota */ }
+}
+
+/* Save current data. In server mode this also pushes to the server. */
 function persist() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  cacheLocal();
+  if (serverMode) scheduleServerSave();
+}
+
+function setSyncStatus(state) {
+  const el = document.getElementById("sync-status");
+  if (!el) return;
+  const map = {
+    saving:  { t: "מסנכרן…",   c: "#8e8e93" },
+    saved:   { t: "מסונכרן",   c: "var(--success)" },
+    synced:  { t: "מסונכרן",   c: "var(--success)" },
+    offline: { t: "מצב מקומי", c: "var(--warning)" },
+    error:   { t: "שגיאת שמירה", c: "var(--danger)" },
+    conflict:{ t: "עודכן מרחוק", c: "var(--warning)" }
+  };
+  const s = map[state] || map.saved;
+  el.textContent = (serverMode ? "● " : "○ ") + s.t;
+  el.style.color = s.c;
+  el.title = serverMode
+    ? "הנתונים משותפים לכל המשתמשים דרך השרת"
+    : "מצב מקומי — הנתונים נשמרים בדפדפן זה בלבד";
+}
+
+function scheduleServerSave() {
+  if (saveInFlight) { savePending = true; return; }
+  pushToServer(false);
+}
+
+/* PUT the whole document. force = unconditional overwrite (import/reset). */
+async function pushToServer(force) {
+  if (!serverMode) return;
+  saveInFlight = true;
+  setSyncStatus("saving");
+  try {
+    const headers = { "Content-Type": "application/json" };
+    if (!force && serverVersion) headers["If-Match"] = '"' + serverVersion + '"';
+    const res = await fetch(API_URL, { method: "PUT", headers, body: JSON.stringify(data) });
+    if (res.status === 409) {
+      // Someone else saved in the meantime — reload the shared copy.
+      await handleConflict();
+    } else if (res.ok) {
+      const tag = res.headers.get("ETag");
+      if (tag) serverVersion = tag.replace(/"/g, "");
+      setSyncStatus("saved");
+    } else {
+      setSyncStatus("error");
+    }
+  } catch (e) {
+    // Lost connection to the server — keep the local cache, show a notice.
+    setSyncStatus("offline");
+  } finally {
+    saveInFlight = false;
+    if (savePending) { savePending = false; pushToServer(false); }
+  }
+}
+
+async function handleConflict() {
+  try {
+    const res = await fetch(API_URL, { method: "GET", cache: "no-store" });
+    if (res.ok) {
+      const remote = await res.json();
+      const tag = res.headers.get("ETag");
+      serverVersion = tag ? tag.replace(/"/g, "") : serverVersion;
+      if (remote) {
+        data = normalize(remote);
+        cacheLocal();
+        renderUserSelects();
+        if (!isModalOpen()) renderCurrentView();
+        setSyncStatus("conflict");
+      }
+    }
+  } catch (e) { setSyncStatus("offline"); }
+}
+
+function isModalOpen() {
+  return !!document.querySelector(".modal-overlay.open");
+}
+
+/* Periodically pull the shared copy so everyone stays in sync. */
+async function pollServer() {
+  if (!serverMode || saveInFlight || savePending || isModalOpen()) return;
+  try {
+    const res = await fetch(API_URL, { method: "GET", cache: "no-store" });
+    if (!res.ok) return;
+    const tag = (res.headers.get("ETag") || "").replace(/"/g, "");
+    if (tag && tag !== serverVersion) {
+      const remote = await res.json();
+      if (remote) {
+        data = normalize(remote);
+        serverVersion = tag;
+        cacheLocal();
+        renderUserSelects();
+        renderCurrentView();
+        setSyncStatus("synced");
+      }
+    }
+  } catch (e) { setSyncStatus("offline"); }
+}
+
+/* Decide server vs. local mode at startup, then load the data. */
+async function initData() {
+  try {
+    const res = await fetch(API_URL, { method: "GET", cache: "no-store" });
+    if (res.ok) {
+      serverMode = true;
+      const remote = await res.json();           // null if the server has no data yet
+      const tag = res.headers.get("ETag");
+      serverVersion = tag ? tag.replace(/"/g, "") : null;
+      if (remote) {
+        data = normalize(remote);
+        cacheLocal();
+      } else {
+        // First run on a fresh server — seed it with defaults (or local cache).
+        data = loadLocal();
+        await pushToServer(true);
+      }
+      setSyncStatus("synced");
+      pollTimer = setInterval(pollServer, 8000);
+      return;
+    }
+    throw new Error("api status " + res.status);
+  } catch (e) {
+    // No handler reachable -> standalone LocalStorage mode (original behaviour).
+    serverMode = false;
+    data = loadLocal();
+    setSyncStatus("offline");
+  }
 }
 
 /* =========================================================
@@ -1550,6 +1704,9 @@ document.getElementById("msf-save").addEventListener("click", () => {
    Settings — backup / restore / ICS / Exchange
    ========================================================= */
 function renderSettings() {
+  document.getElementById("storage-mode-line").innerHTML = serverMode
+    ? '🌐 <strong>מצב שרת:</strong> הנתונים משותפים לכל המשתמשים ונשמרים במרכז על שרת ה-IIS. מומלץ שמנהל המערכת יבצע גיבוי תקופתי.'
+    : '💻 <strong>מצב מקומי:</strong> הנתונים נשמרים בדפדפן של מחשב זה בלבד. ניקוי נתוני אתרים ימחק את כל המידע — מומלץ לגבות באופן קבוע.';
   const last = data.settings.lastBackupDate;
   document.getElementById("last-backup-line").innerHTML = last
     ? "גיבוי אחרון: <strong>" + fmtDateTime(last) + "</strong>" + (backupOverdue() ? ' <span style="color:var(--warning)">— עברו מעל 7 ימים, מומלץ לגבות!</span>' : "")
@@ -1581,10 +1738,15 @@ document.getElementById("import-file").addEventListener("change", e => {
         alert("הקובץ אינו קובץ גיבוי תקין של NOIZZ.");
         return;
       }
-      if (!confirm("ייבוא הגיבוי ידרוס את כל הנתונים הקיימים במערכת. האם להמשיך?")) return;
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(imported));
-      data = loadData();
-      refresh();
+      const warn = serverMode
+        ? "ייבוא הגיבוי ידרוס את הנתונים המשותפים בשרת עבור כל המשתמשים. האם להמשיך?"
+        : "ייבוא הגיבוי ידרוס את כל הנתונים הקיימים במערכת. האם להמשיך?";
+      if (!confirm(warn)) return;
+      data = normalize(imported);
+      cacheLocal();
+      if (serverMode) pushToServer(true);
+      renderUserSelects();
+      renderCurrentView();
       alert("הגיבוי נטען בהצלחה.");
     } catch (err) {
       alert("שגיאה בקריאת הקובץ: " + err.message);
@@ -1600,11 +1762,17 @@ document.getElementById("btn-save-exchange").addEventListener("click", () => {
 });
 
 document.getElementById("btn-reset-all").addEventListener("click", () => {
-  if (!confirm("פעולה זו תמחק את כל הנתונים במערכת לצמיתות. האם אתה בטוח?")) return;
+  const warn = serverMode
+    ? "פעולה זו תמחק את כל הנתונים המשותפים בשרת עבור כל המשתמשים לצמיתות. האם אתה בטוח?"
+    : "פעולה זו תמחק את כל הנתונים במערכת לצמיתות. האם אתה בטוח?";
+  if (!confirm(warn)) return;
   if (!confirm("אישור אחרון: כל המשימות, אנשי הצוות ואבני הדרך יימחקו. להמשיך?")) return;
-  localStorage.removeItem(STORAGE_KEY);
+  try { localStorage.removeItem(STORAGE_KEY); } catch (e) { /* ignore */ }
   data = defaultData();
-  refresh();
+  cacheLocal();
+  if (serverMode) pushToServer(true);
+  renderUserSelects();
+  renderCurrentView();
 });
 
 /* ----- ICS export (level A — always available) ----- */
@@ -1659,8 +1827,12 @@ document.getElementById("btn-export-ics").addEventListener("click", () => {
 /* =========================================================
    Init
    ========================================================= */
-renderUserSelects();
-switchView("dashboard");
+(async function start() {
+  await initData();          // chooses server or local mode and loads the data
+  renderUserSelects();
+  switchView("dashboard");
+  setSyncStatus(serverMode ? "synced" : "offline");
+})();
 </script>
 </body>
 </html>
