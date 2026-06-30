@@ -154,6 +154,11 @@ test('renderSystemPrompt fills placeholders', () => {
   assert.ok(/calc-slider|Calculator/.test(sp), 'calculator documented');
   assert.ok(/timeline-item/.test(sp), 'timeline documented');
   assert.ok(/never call alert|alert\(\)/i.test(sp), 'sandbox-safe (no alert) rule present');
+  assert.ok(/waterfall/i.test(sp), 'waterfall chart documented');
+});
+test('energetic palette registered', () => {
+  const pal = IDG.store.PALETTES['energetic'];
+  assert.ok(pal && pal.series.length === 6 && pal.primary === '#2A9D8F', 'energetic palette present');
 });
 test('dark slate-premium palette + paletteCss surface tokens', () => {
   const pal = IDG.store.PALETTES['slate-premium'];

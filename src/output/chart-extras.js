@@ -256,14 +256,71 @@
     },
   };
 
+  /* Waterfall — cumulative build-up of relative steps to a total, drawn as
+     Chart.js floating bars (offline, canvas; no Plotly needed).
+     steps: [{label, value, total?}]. Each non-total step adds `value` to the
+     running cumulative; a {total:true} step draws a full bar from 0 (to its
+     value, or to the running cumulative if value is omitted). */
+  IDG_CHARTS.waterfall = function (target, steps, opts) {
+    var el = ctxOf(target);
+    if (!el || !steps || !steps.length) return null;
+    opts = opts || {};
+    var rtl = isRTL();
+    var inc = cssVar('--c-primary', '#2563EB');
+    var dec = cssVar('--c-accent', '#F43F5E');
+    var tot = cssVar('--c-secondary', '#1E40AF');
+    var labels = [], data = [], colors = [], running = 0;
+    steps.forEach(function (s) {
+      var v = +s.value || 0;
+      labels.push(s.label);
+      if (s.total) {
+        data.push([0, s.value != null ? v : running]);
+        colors.push(tot);
+      } else {
+        data.push([running, running + v]);
+        colors.push(v >= 0 ? inc : dec);
+        running += v;
+      }
+    });
+    return new W.Chart(el, {
+      type: 'bar',
+      data: { labels: labels, datasets: [{ label: opts.label || '', data: data, backgroundColor: colors, borderRadius: 6 }] },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            rtl: rtl, textDirection: rtl ? 'rtl' : 'ltr',
+            callbacks: { label: function (c) { var r = c.raw || [0, 0]; return (opts.prefix || '') + (Math.round(Math.abs(r[1] - r[0]) * 100) / 100); } },
+          },
+        },
+        scales: { x: { grid: { display: false } }, y: { beginAtZero: true } },
+      },
+    });
+  };
+
   W.IDG_CHARTS = IDG_CHARTS;
 
-  /* ---------- IDG_FMT: number / currency / percent formatting ---------- */
+  /* ---------- IDG_FMT: number / currency / percent / label-wrap ---------- */
   W.IDG_FMT = {
     usd: function (n) { try { return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n); } catch (e) { return '$' + Math.round(n || 0); } },
     currency: function (n, cur) { try { return new Intl.NumberFormat(undefined, { style: 'currency', currency: cur || 'USD', maximumFractionDigits: 0 }).format(n); } catch (e) { return '' + Math.round(n || 0); } },
     num: function (n) { try { return new Intl.NumberFormat().format(n); } catch (e) { return '' + n; } },
     pct: function (n, d) { var f = Math.pow(10, d == null ? 1 : d); return (Math.round((n || 0) * f) / f) + '%'; },
+    // Wrap a long chart label onto multiple lines (Chart.js accepts an array
+    // of strings as a multi-line label). Returns the string unchanged if short.
+    wrap: function (label, max) {
+      max = max || 16;
+      var s = String(label == null ? '' : label);
+      if (s.length <= max) return s;
+      var words = s.split(' '), lines = [], cur = '';
+      words.forEach(function (w) {
+        if ((cur + ' ' + w).trim().length > max) { if (cur) lines.push(cur.trim()); cur = w; }
+        else cur += ' ' + w;
+      });
+      if (cur.trim()) lines.push(cur.trim());
+      return lines;
+    },
   };
 
   /* ---------- IDG_NOTICE: sandbox-safe replacement for alert()/confirm() ----

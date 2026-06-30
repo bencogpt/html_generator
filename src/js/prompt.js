@@ -44,6 +44,8 @@ CHART TYPES (all render on <canvas> via the injected Chart.js + plugins — choo
 - Multi-dimension profile / strengths: "radar".
 - Trend over time: "line" (set datasets[].fill:true and a translucent backgroundColor for an area chart).
 - Correlation: "scatter" (data:[{x,y}]); add a third dimension with "bubble" (data:[{x,y,r}]).
+- Breakdown of a total into contributing parts (e.g. how a price/fee splits across the value chain): waterfall — call IDG_CHARTS.waterfall('canvasId', [{label:'Wholesale', value:0.33}, {label:'Margin', value:0.40}, {label:'Service', value:0.27}, {label:'Total', value:1.00, total:true}], { label:'…', prefix:'$' }); each non-total step adds to the running cumulative.
+- Long chart labels: wrap them with IDG_FMT.wrap('a very long label') (returns a multi-line array Chart.js understands).
 - Heatmap / matrix (intensity grid, capability matrices, density): call the provided helper —
     IDG_CHARTS.heatmap('canvasId', rowLabels, colLabels, matrix, { label:'…' });
   where matrix[rowIndex][colIndex] is a number. Use this for any "X vs Y intensity" data.
@@ -57,6 +59,8 @@ Map/heatmap canvases look best in <div class="chart-box tall"> or <div class="ch
 OTHER COMPONENTS (use when the data fits):
 - Data table: <div class="table-wrap"><table class="data-table"><thead>…</thead><tbody>…</tbody></table></div> (sticky header, zebra rows, horizontal scroll).
 - Timeline (dates / milestones / roadmap): <div class="timeline"><div class="timeline-item"><div class="t-date">2024</div><div class="t-title">…</div><div class="t-body">…</div></div> … </div>.
+- Numbered list (steps / rules with 01·02·03 badges): <div class="num-list"><div class="num-item"><div class="num">01</div><div><h4>…</h4><p>…</p></div></div> … </div>.
+- Callout / bottom-line highlight: <div class="callout"><div class="ct">Bottom line</div><p>…</p></div>.
 - Stat callouts: <div class="stat"><div class="sv">value</div><div class="sl">label</div></div> — add class "positive" (green) or "warning" (amber) for sentiment.
 - Calculator (ONLY when the document contains a clear formula / rates the user could vary): sliders that compute live. Example skeleton (wrap the script in try/catch):
     <div class="calc"> <div class="calc-row"><label>Volume</label><span class="calc-out" id="cv">…</span></div>
@@ -66,7 +70,7 @@ OTHER COMPONENTS (use when the data fits):
 
 THEME: the palette MAY be dark. Do NOT hardcode white backgrounds (#fff) or black/dark text — always use the provided classes or the CSS variables so the output adapts to light AND dark themes.
 
-AVAILABLE CSS CLASSES (injected via {{BASE_CSS}}; prefer them over custom CSS): .container, .hero, .icon, .subtitle, .card, .section-title, .subsection-title, .grid-2, .grid-3, .grid-4, .kpi, .value, .label, .stat (+ .positive/.warning), .sv, .sl, .entity-card (+ .alt), .chart-box (+ .small / .tall / .map / .wide), .badge, .pill, .table-wrap, .data-table, .tabs, .tab-btn, .tab-content, .calc, .calc-models, .calc-model, .calc-row, .calc-out, .calc-slider, .calc-results, .calc-result (+ .primary), .timeline, .timeline-item, .t-date, .t-title, .t-body, .flow, .flow-step, .step-title, .flow-arrow, .hbar, .footer, .muted, .accent.
+AVAILABLE CSS CLASSES (injected via {{BASE_CSS}}; prefer them over custom CSS): .container, .hero, .icon, .subtitle, .card, .section-title, .subsection-title, .grid-2, .grid-3, .grid-4, .kpi, .value, .label, .stat (+ .positive/.warning), .sv, .sl, .entity-card (+ .alt), .chart-box (+ .small / .tall / .map / .wide), .badge, .pill, .table-wrap, .data-table, .tabs, .tab-btn, .tab-content, .calc, .calc-models, .calc-model, .calc-row, .calc-out, .calc-slider, .calc-results, .calc-result (+ .primary), .timeline, .timeline-item, .t-date, .t-title, .t-body, .num-list, .num-item, .num, .callout, .ct, .flow, .flow-step, .step-title, .flow-arrow, .hbar, .footer, .muted, .accent.
 Wrap main content in <div class="container">. You may add ONE small <style> block for fine-tuning; it must reference no external resources. The palette is exposed as CSS variables: --c-primary, --c-secondary, --c-accent, --c-bg, --c-grad-a, --c-grad-b, plus theme surfaces --c-surface, --c-surface-2, --c-text, --c-muted, --c-border.
 
 COLOR PALETTE for this run: {{PALETTE_JSON}} — use these hex values for chart datasets and accents.

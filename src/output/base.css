@@ -233,6 +233,21 @@ input[type="range"].calc-slider::-moz-range-thumb {
 .calc-result .rv { font-size: 24px; font-weight: 800; color: var(--c-primary); font-variant-numeric: tabular-nums; }
 .calc-result .rl { font-size: 12.5px; color: var(--c-muted); }
 
+/* ---- Numbered list (01/02/03 circular badges) ---- */
+.num-list { display: flex; flex-direction: column; gap: 16px; }
+.num-item { display: flex; gap: 14px; align-items: flex-start; }
+.num-item .num {
+  flex: none; width: 34px; height: 34px; border-radius: 50%;
+  background: var(--c-primary); color: var(--c-on-primary);
+  font-weight: 800; display: flex; align-items: center; justify-content: center;
+}
+.num-item h4 { margin: 0 0 2px; font-size: 15px; }
+.num-item p { margin: 0; font-size: 13.5px; color: var(--c-muted); }
+
+/* ---- Callout / "bottom line" highlight box ---- */
+.callout { background: var(--c-surface-2); border-inline-start: 5px solid var(--c-accent); border-radius: 10px; padding: 14px 18px; margin: 8px 0; }
+.callout .ct { font-weight: 800; color: var(--c-accent); margin-bottom: 4px; }
+
 /* ---- Timeline ---- */
 .timeline { position: relative; padding-inline-start: 26px; }
 .timeline::before { content: ""; position: absolute; inset-inline-start: 6px; top: 4px; bottom: 4px; width: 2px; background: var(--c-border); }

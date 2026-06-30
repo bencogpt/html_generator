@@ -46,6 +46,7 @@ const REPORT = `<!DOCTYPE html>
 <div><h3 class="subsection-title">heatmap (matrix)</h3><div class="chart-box tall"><canvas id="t_heatmap"></canvas></div></div>
 <div><h3 class="subsection-title">choropleth map</h3><div class="chart-box map"><canvas id="t_choropleth"></canvas></div></div>
 <div><h3 class="subsection-title">bubble map</h3><div class="chart-box map"><canvas id="t_bubblemap"></canvas></div></div>
+<div><h3 class="subsection-title">waterfall</h3><div class="chart-box small"><canvas id="t_waterfall"></canvas></div></div>
 </div></section>
 </div>
 <script>
@@ -71,12 +72,13 @@ mk('t_mixed',function(){new Chart(t_mixed,{data:{labels:['1','2','3','4'],datase
 mk('t_heatmap',function(){IDG_CHARTS.heatmap('t_heatmap',['ש1','ש2','ש3'],['A','B','C','D'],[[1,5,9,3],[7,3,2,8],[4,6,1,5]],{label:'x'});});
 mk('t_choropleth',function(){IDG_CHARTS.choropleth('t_choropleth',{'Israel':40,'United States':25,'Germany':15,'India':10,'Brazil':6},{label:'x'});});
 mk('t_bubblemap',function(){IDG_CHARTS.bubbleMap('t_bubblemap',{'Israel':40,'United States':25,'Germany':15,'France':10},{label:'x'});});
+mk('t_waterfall',function(){IDG_CHARTS.waterfall('t_waterfall',[{label:'A',value:0.33},{label:'B',value:0.40},{label:'C',value:0.27},{label:'Total',value:1.0,total:true}],{label:'',prefix:'$'});});
 });
 </scr`+`ipt></body></html>`;
 
 const TYPES = ['t_doughnut', 't_pie', 't_polar', 't_bar', 't_hbar', 't_stacked', 't_grouped',
   't_line', 't_area', 't_radar', 't_scatter', 't_bubble', 't_mixed',
-  't_heatmap', 't_choropleth', 't_bubblemap'];
+  't_heatmap', 't_choropleth', 't_bubblemap', 't_waterfall'];
 
 const server = http.createServer((req, res) => {
   const cors = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': '*', 'Access-Control-Allow-Headers': '*' };

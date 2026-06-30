@@ -47,6 +47,14 @@
       bg: '#EEF2FF', gradA: '#4338CA', gradB: '#DB2777',
       series: ['#4F46E5', '#F43F5E', '#F59E0B', '#10B981', '#0EA5E9', '#A855F7'],
     },
+    // "Energetic & Playful" warm palette from the Gemini KYC infographic
+    // (teal / yellow / orange / red-orange / navy).
+    'energetic': {
+      label: 'Energetic',
+      primary: '#2A9D8F', secondary: '#264653', accent: '#E76F51',
+      bg: '#F0FDFA', gradA: '#264653', gradB: '#2A9D8F',
+      series: ['#2A9D8F', '#E9C46A', '#F4A261', '#E76F51', '#264653', '#287271'],
+    },
     // Dark "fintech premium" theme (DIAGE-style glassmorphism): dark slate page,
     // translucent blurred cards, light text, blue/emerald/amber accents. The
     // surface tokens override the light defaults in base.css.
