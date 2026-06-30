@@ -17,6 +17,15 @@ OUTPUT CONTRACT — follow exactly:
 3. ABSOLUTELY NO external URLs of any kind: no http:// or https:// links, no CDN scripts, no @import, no web fonts, no external images. No <svg> and no Mermaid. Charts use <canvas> + Chart.js only (the library is injected for you). Decorative icons must be emoji or pure CSS.
 4. Set <html lang="…" dir="…"> to match the document language (dir="rtl" for Hebrew/Arabic, otherwise "ltr"). All text in the infographic must be in the document's language.
 5. Use ONLY data that appears in the source document. Never invent numbers. If the document has no quantitative data, use qualitative visualizations instead: capability matrices, timelines, CSS flow diagrams, comparison cards.
+6. INTERACTIVITY is optional. You MAY add interactive elements (a tabbed dashboard, a slider calculator). Any such JavaScript must be INLINE in a <script> at the end of <body>, wrapped in try/catch, and SANDBOX-SAFE: NEVER call alert(), confirm(), or prompt() — they are blocked inside sandboxed iframes and will crash the page; show messages via an inline element or IDG_NOTICE(title, body) instead. Use textContent (not innerHTML) when writing user/data values.
+
+LAYOUT — choose based on the data:
+- DEFAULT: a single vertical scroll of <section class="card"> blocks (best for most documents).
+- TABBED DASHBOARD: if the document naturally splits into 3+ distinct themes (e.g. the document has several major parts), you MAY organize it as tabs. Build it as:
+  <div class="tabs" data-tab-group="g1"><button class="tab-btn" data-tab="t1">Label 1</button><button class="tab-btn" data-tab="t2">Label 2</button>…</div>
+  <div class="tab-content active" data-tab-group="g1" data-tab="t1"> … sections … </div>
+  <div class="tab-content" data-tab-group="g1" data-tab="t2"> … </div> …
+  Tabs are wired automatically (no script needed) and charts inside hidden tabs resize when shown. Mark the first pane "active". Put charts for ALL tabs in the single end-of-body chart <script> as usual.
 
 STRUCTURE (model it on a professional market-survey infographic):
 - Hero header: <header class="hero"> with an emoji icon (<span class="icon">), an <h1> title and a <p class="subtitle"> — derived from the document.
@@ -45,8 +54,20 @@ CHART TYPES (all render on <canvas> via the injected Chart.js + plugins — choo
   These helpers are RTL- and palette-aware and need no options. Plain "new Chart(...)" configs (including type:'matrix'/'choropleth') also work if you prefer.
 Map/heatmap canvases look best in <div class="chart-box tall"> or <div class="chart-box map">.
 
-AVAILABLE CSS CLASSES (injected via {{BASE_CSS}}; prefer them over custom CSS): .container, .hero, .icon, .subtitle, .card, .section-title, .subsection-title, .grid-2, .grid-3, .grid-4, .kpi, .value, .label, .entity-card (+ .alt), .chart-box (+ .small / .tall / .map / .wide), .badge, .pill, .data-table, .flow, .flow-step, .step-title, .flow-arrow, .hbar, .footer, .muted, .accent.
-Wrap main content in <div class="container">. You may add ONE small <style> block for fine-tuning; it must reference no external resources. The palette is exposed as CSS variables: --c-primary, --c-secondary, --c-accent, --c-bg, --c-grad-a, --c-grad-b.
+OTHER COMPONENTS (use when the data fits):
+- Data table: <div class="table-wrap"><table class="data-table"><thead>…</thead><tbody>…</tbody></table></div> (sticky header, zebra rows, horizontal scroll).
+- Timeline (dates / milestones / roadmap): <div class="timeline"><div class="timeline-item"><div class="t-date">2024</div><div class="t-title">…</div><div class="t-body">…</div></div> … </div>.
+- Stat callouts: <div class="stat"><div class="sv">value</div><div class="sl">label</div></div> — add class "positive" (green) or "warning" (amber) for sentiment.
+- Calculator (ONLY when the document contains a clear formula / rates the user could vary): sliders that compute live. Example skeleton (wrap the script in try/catch):
+    <div class="calc"> <div class="calc-row"><label>Volume</label><span class="calc-out" id="cv">…</span></div>
+      <input type="range" class="calc-slider" id="vol" min="1000" max="1000000" step="1000" value="100000" oninput="recalc()">
+      <div class="calc-results"><div class="calc-result primary"><div class="rv" id="rev">$0</div><div class="rl">Revenue</div></div></div> </div>
+  In the end-of-body script define recalc() using the document's formula, format money/numbers with IDG_FMT.usd(n) / IDG_FMT.num(n) / IDG_FMT.pct(n), and call recalc() once at the end. Sliders freeze (showing computed defaults) in PDF/static exports — that is fine.
+
+THEME: the palette MAY be dark. Do NOT hardcode white backgrounds (#fff) or black/dark text — always use the provided classes or the CSS variables so the output adapts to light AND dark themes.
+
+AVAILABLE CSS CLASSES (injected via {{BASE_CSS}}; prefer them over custom CSS): .container, .hero, .icon, .subtitle, .card, .section-title, .subsection-title, .grid-2, .grid-3, .grid-4, .kpi, .value, .label, .stat (+ .positive/.warning), .sv, .sl, .entity-card (+ .alt), .chart-box (+ .small / .tall / .map / .wide), .badge, .pill, .table-wrap, .data-table, .tabs, .tab-btn, .tab-content, .calc, .calc-models, .calc-model, .calc-row, .calc-out, .calc-slider, .calc-results, .calc-result (+ .primary), .timeline, .timeline-item, .t-date, .t-title, .t-body, .flow, .flow-step, .step-title, .flow-arrow, .hbar, .footer, .muted, .accent.
+Wrap main content in <div class="container">. You may add ONE small <style> block for fine-tuning; it must reference no external resources. The palette is exposed as CSS variables: --c-primary, --c-secondary, --c-accent, --c-bg, --c-grad-a, --c-grad-b, plus theme surfaces --c-surface, --c-surface-2, --c-text, --c-muted, --c-border.
 
 COLOR PALETTE for this run: {{PALETTE_JSON}} — use these hex values for chart datasets and accents.
 {{LANG_RULE}}`;

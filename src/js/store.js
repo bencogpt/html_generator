@@ -47,6 +47,22 @@
       bg: '#EEF2FF', gradA: '#4338CA', gradB: '#DB2777',
       series: ['#4F46E5', '#F43F5E', '#F59E0B', '#10B981', '#0EA5E9', '#A855F7'],
     },
+    // Dark "fintech premium" theme (DIAGE-style glassmorphism): dark slate page,
+    // translucent blurred cards, light text, blue/emerald/amber accents. The
+    // surface tokens override the light defaults in base.css.
+    'slate-premium': {
+      label: 'Slate Premium (dark)',
+      dark: true,
+      primary: '#3B82F6', secondary: '#60A5FA', accent: '#10B981',
+      bg: '#0F172A', gradA: '#1E293B', gradB: '#0B1220',
+      series: ['#3B82F6', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899', '#22D3EE'],
+      surface: 'rgba(30, 41, 59, 0.72)',
+      surface2: 'rgba(15, 23, 42, 0.6)',
+      text: '#E2E8F0', muted: '#94A3B8',
+      border: 'rgba(255, 255, 255, 0.08)',
+      page: '#0F172A', heroText: '#FFFFFF', onPrimary: '#FFFFFF',
+      shadow: '0 8px 30px rgba(0, 0, 0, 0.35)', blur: 'blur(12px)',
+    },
   };
 
   /* Connection presets (FR-30) — one-click starting points for common stacks.

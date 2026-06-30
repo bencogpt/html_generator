@@ -236,8 +236,15 @@
      yields a script-free, portable, vector report. */
   function exportPdf() {
     if (!currentResult) return;
+    // Reveal all tab panes (so a tabbed report prints as one full scroll) and
+    // resize charts to their now-visible size before printing.
     const printTrigger =
-      '<script>window.addEventListener("load",function(){setTimeout(function(){try{window.focus();window.print();}catch(e){}},700);});<\/script>';
+      '<script>window.addEventListener("load",function(){setTimeout(function(){try{' +
+      'document.querySelectorAll(".tab-content").forEach(function(p){p.classList.add("active");p.style.display="block";});' +
+      'document.querySelectorAll(".tabs").forEach(function(n){n.style.display="none";});' +
+      'if(window.IDG_TABS)window.IDG_TABS.reflow();' +
+      'setTimeout(function(){try{window.focus();window.print();}catch(e){}},500);' +
+      '}catch(e){try{window.print();}catch(e2){}}},600);});<\/script>';
     let html = currentResult.html;
     if (/<\/body>/i.test(html)) html = html.replace(/<\/body>/i, printTrigger + '</body>');
     else html += printTrigger;
@@ -262,7 +269,12 @@
      Trade-off: chart hover/tooltips become static (no scripts); CSS hover,
      collapsibles and layout are preserved. */
   const STATIC_CONVERTER =
-    '<script>(function(){function run(){try{' +
+    '<script>(function(){' +
+    'function flatten(){' +  // reveal every tab pane + resize charts, so nothing is hidden
+    'document.querySelectorAll(".tab-content").forEach(function(p){p.classList.add("active");p.style.display="block";});' +
+    'document.querySelectorAll(".tabs").forEach(function(n){n.style.display="none";});' +
+    'if(window.IDG_TABS)window.IDG_TABS.reflow();}' +
+    'function run(){try{' +
     'var cs=document.querySelectorAll("canvas");' +
     'for(var i=0;i<cs.length;i++){var c=cs[i],img=document.createElement("img");' +
     'try{img.src=c.toDataURL("image/png");}catch(e){continue;}' +
@@ -273,7 +285,8 @@
     'var html="<!DOCTYPE html>\\n"+document.documentElement.outerHTML;' +
     'parent.postMessage({__idgStatic:1,html:html},"*");' +
     '}catch(e){parent.postMessage({__idgStatic:1,error:String(e&&e.message||e)},"*");}}' +
-    'if(document.readyState==="complete")setTimeout(run,1300);else window.addEventListener("load",function(){setTimeout(run,1300);});' +
+    'function go(){flatten();setTimeout(run,500);}' +  // let reflow redraw before snapshot
+    'if(document.readyState==="complete")setTimeout(go,1000);else window.addEventListener("load",function(){setTimeout(go,1000);});' +
     '})();<\/script>';
 
   function exportStaticHtml() {

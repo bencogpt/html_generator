@@ -20,7 +20,17 @@
   function paletteCss(state) {
     const pal = IDG.store.PALETTES[state.output.palette];
     if (!pal) return '';
-    return `:root{--c-primary:${pal.primary};--c-secondary:${pal.secondary};--c-accent:${pal.accent};--c-bg:${pal.bg};--c-grad-a:${pal.gradA};--c-grad-b:${pal.gradB};}`;
+    let vars = `--c-primary:${pal.primary};--c-secondary:${pal.secondary};--c-accent:${pal.accent};` +
+      `--c-bg:${pal.bg};--c-grad-a:${pal.gradA};--c-grad-b:${pal.gradB};`;
+    // Optional surface tokens (a dark palette sets these; light palettes inherit
+    // the defaults baked into base.css).
+    const map = {
+      surface: '--c-surface', surface2: '--c-surface-2', text: '--c-text', muted: '--c-muted',
+      border: '--c-border', page: '--c-page', heroText: '--c-hero-text', onPrimary: '--c-on-primary',
+      shadow: '--c-shadow', blur: '--c-blur',
+    };
+    for (const k in map) if (pal[k]) vars += `${map[k]}:${pal[k]};`;
+    return `:root{${vars}}`;
   }
 
   /* opts: { signal, onProgress(stage, info), feedback, prevRawHtml }

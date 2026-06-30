@@ -63,9 +63,26 @@ is to front the model with **LiteLLM** (which allows browser CORS) and point
 the generator at the LiteLLM URL. See CORS below.
 
 Palettes: Vibrant Tech Blues (default), Colorful (multi-hue indigo/rose/amber/
-emerald — vibrant, distinct chart colors), Emerald Forest, Warm Sunset, Royal
-Violet, Slate Mono. Set in Settings → Output or the palette row on the main
-screen.
+emerald — vibrant, distinct chart colors), Slate Premium (dark glassmorphism /
+fintech theme — dark page, translucent cards, light text), Emerald Forest,
+Warm Sunset, Royal Violet, Slate Mono. Set in Settings → Output or the palette
+row on the main screen.
+
+### Interactive dashboards (tabs, calculator, timeline)
+
+Beyond a single scroll, generated reports can use richer DIAGE-style layouts
+when the data fits — the model decides:
+
+- **Tabbed dashboards** — multi-tab navigation (auto-wired, charts reflow when
+  a tab is shown). Flattened to one scroll in the PDF/Static exports.
+- **Interactive calculators** — slider-driven, live `Intl` currency/number
+  formatting via the injected `IDG_FMT` helpers (sandbox-safe inline JS).
+- **Timelines, stat callouts, and richer data tables** (sticky headers, zebra,
+  scroll).
+
+All of these are built offline (no Tailwind/CDN — our utility CSS + vendored
+Chart.js + embedded Heebo) and run inside the same sandboxed iframe. Native
+dialogs (`alert`/`confirm`) are avoided since they're blocked in sandboxes.
 
 ### Connecting without `--disable-web-security` (bundled CORS proxy)
 

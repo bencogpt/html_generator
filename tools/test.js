@@ -15,7 +15,7 @@ globalThis.localStorage = {
 };
 
 const ROOT = path.resolve(__dirname, '..');
-for (const m of ['util', 'i18n', 'store', 'extract', 'llm', 'prompt', 'postprocess', 'metrics']) {
+for (const m of ['util', 'i18n', 'store', 'extract', 'llm', 'prompt', 'postprocess', 'metrics', 'pipeline']) {
   require(path.join(ROOT, 'src/js', m + '.js'));
 }
 const IDG = globalThis.IDG;
@@ -149,6 +149,24 @@ test('renderSystemPrompt fills placeholders', () => {
   assert.ok(sp.includes('{{BASE_CSS}}') && sp.includes('{{CHART_LIB}}'));  // tokens for the model stay
   assert.ok(sp.includes('#2563EB'));
   assert.ok(/try \{/.test(sp) && /catch/.test(sp), 'per-chart try/catch instruction present');
+  // DIAGE features documented
+  assert.ok(/tab-content|TABBED DASHBOARD/.test(sp), 'tabbed layout documented');
+  assert.ok(/calc-slider|Calculator/.test(sp), 'calculator documented');
+  assert.ok(/timeline-item/.test(sp), 'timeline documented');
+  assert.ok(/never call alert|alert\(\)/i.test(sp), 'sandbox-safe (no alert) rule present');
+});
+test('dark slate-premium palette + paletteCss surface tokens', () => {
+  const pal = IDG.store.PALETTES['slate-premium'];
+  assert.ok(pal && pal.dark === true, 'slate-premium dark palette registered');
+  assert.ok(pal.surface && pal.text && pal.page, 'dark palette has surface tokens');
+  const s = IDG.store.load();
+  s.output.palette = 'slate-premium';
+  const css = IDG.pipeline.paletteCss(s);
+  assert.ok(/--c-surface:/.test(css) && /--c-text:/.test(css) && /--c-blur:/.test(css), 'surface tokens emitted: ' + css.slice(0, 80));
+  // light palette emits only color vars, no surface override
+  s.output.palette = 'vibrant-tech-blues';
+  assert.ok(!/--c-surface:/.test(IDG.pipeline.paletteCss(s)), 'light palette inherits default surfaces');
+  s.output.palette = 'vibrant-tech-blues';
 });
 test('colorful palette exists and reaches the prompt', () => {
   const s = IDG.store.load();

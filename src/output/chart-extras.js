@@ -257,4 +257,98 @@
   };
 
   W.IDG_CHARTS = IDG_CHARTS;
+
+  /* ---------- IDG_FMT: number / currency / percent formatting ---------- */
+  W.IDG_FMT = {
+    usd: function (n) { try { return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n); } catch (e) { return '$' + Math.round(n || 0); } },
+    currency: function (n, cur) { try { return new Intl.NumberFormat(undefined, { style: 'currency', currency: cur || 'USD', maximumFractionDigits: 0 }).format(n); } catch (e) { return '' + Math.round(n || 0); } },
+    num: function (n) { try { return new Intl.NumberFormat().format(n); } catch (e) { return '' + n; } },
+    pct: function (n, d) { var f = Math.pow(10, d == null ? 1 : d); return (Math.round((n || 0) * f) / f) + '%'; },
+  };
+
+  /* ---------- IDG_NOTICE: sandbox-safe replacement for alert()/confirm() ----
+     (native dialogs throw / are blocked inside sandboxed iframes). */
+  W.IDG_NOTICE = function (title, body) {
+    try {
+      var m = document.getElementById('idg-notice');
+      if (!m) {
+        m = document.createElement('div');
+        m.id = 'idg-notice';
+        m.className = 'idg-modal';
+        m.innerHTML = '<div class="idg-modal-box"><h3></h3><p></p><div style="text-align:end"><button>OK</button></div></div>';
+        document.body.appendChild(m);
+        m.querySelector('button').addEventListener('click', function () { m.classList.remove('open'); });
+      }
+      m.querySelector('h3').textContent = title || '';
+      m.querySelector('p').textContent = body || '';
+      m.classList.add('open');
+    } catch (e) { /* noop */ }
+  };
+
+  /* ---------- IDG_TABS: auto-wire tab dashboards + chart reflow ----------
+     Markup convention (no per-chart script needed):
+       <div class="tabs" data-tab-group="g"><button class="tab-btn" data-tab="a">…</button>…</div>
+       <div class="tab-content" data-tab-group="g" data-tab="a">…</div> …
+     The first pane of each group is shown; switching reveals the target pane
+     and resizes any charts inside it (charts created in hidden panes render at
+     0px until first shown). */
+  var raf = W.requestAnimationFrame ? W.requestAnimationFrame.bind(W) : function (cb) { return setTimeout(cb, 16); };
+  var IDG_TABS = {
+    // Resize charts after layout has flushed. Charts created in a display:none
+    // (or 0-width grid) container have a 0-size canvas; we wait two animation
+    // frames so the revealed container has real dimensions, then resize+redraw.
+    reflow: function (root) {
+      if (!W.Chart) return;
+      raf(function () { raf(function () {
+        (root || document).querySelectorAll('canvas').forEach(function (c) {
+          var ch = W.Chart.getChart(c);
+          if (ch) { try { ch.resize(); ch.update('none'); } catch (e) { /* noop */ } }
+        });
+      }); });
+    },
+    activate: function (group, tab) {
+      document.querySelectorAll('.tab-btn[data-tab-group="' + group + '"]').forEach(function (b) {
+        b.classList.toggle('tab-active', b.getAttribute('data-tab') === tab);
+      });
+      document.querySelectorAll('.tab-content[data-tab-group="' + group + '"]').forEach(function (p) {
+        var on = p.getAttribute('data-tab') === tab;
+        p.classList.toggle('active', on);
+        if (on) IDG_TABS.reflow(p);
+      });
+    },
+    init: function () {
+      var groups = {};
+      document.querySelectorAll('.tabs[data-tab-group]').forEach(function (nav) {
+        var g = nav.getAttribute('data-tab-group');
+        nav.querySelectorAll('.tab-btn').forEach(function (btn) {
+          if (groups[g] == null) groups[g] = btn.getAttribute('data-tab');
+          btn.addEventListener('click', function () { IDG_TABS.activate(g, btn.getAttribute('data-tab')); });
+        });
+      });
+      // Ensure exactly one active pane per group on load.
+      Object.keys(groups).forEach(function (g) {
+        var any = document.querySelector('.tab-content[data-tab-group="' + g + '"].active');
+        IDG_TABS.activate(g, any ? any.getAttribute('data-tab') : groups[g]);
+      });
+    },
+  };
+  W.IDG_TABS = IDG_TABS;
+
+  /* On load: make charts theme-aware (light text on the dark palette) and wire
+     up any tab dashboards. Registered here (before the model's own
+     DOMContentLoaded chart script) so it runs first. */
+  function onReady() {
+    try {
+      if (W.Chart) {
+        var cs = getComputedStyle(document.documentElement);
+        var txt = (cs.getPropertyValue('--c-text') || '').trim();
+        var bdr = (cs.getPropertyValue('--c-border') || '').trim();
+        if (txt) W.Chart.defaults.color = txt;
+        if (bdr) W.Chart.defaults.borderColor = bdr;
+      }
+    } catch (e) { /* noop */ }
+    try { IDG_TABS.init(); } catch (e) { /* noop */ }
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', onReady);
+  else onReady();
 })();
