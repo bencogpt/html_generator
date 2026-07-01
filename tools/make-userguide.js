@@ -122,7 +122,6 @@ function fig(src, cap) { return `<figure><img src="${src}"><figcaption>${cap}</f
 ${fontCss}
 :root{--p:#4F46E5;--p2:#7C3AED;--acc:#F43F5E;--ink:#1f2937;--mut:#6b7280;--line:#e5e7eb;--bg:#eef2ff;}
 *{box-sizing:border-box;}
-html,body{overflow-x:hidden;}
 img{max-width:100%;}
 code{word-break:break-word;white-space:normal;}
 table.g{table-layout:fixed;}
@@ -151,9 +150,10 @@ figcaption{font-size:11.5px;color:var(--mut);text-align:center;margin-top:5px;}
 .note{background:#FFF7ED;border:1px solid #FDBA74;border-radius:10px;padding:10px 14px;margin:10px 0;font-size:12.5px;}
 .note b{color:#9a3412;}
 .tip{background:#ECFDF5;border:1px solid #6EE7B7;border-radius:10px;padding:10px 14px;margin:10px 0;font-size:12.5px;}
-.ch-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:10px;}
+.ch-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-top:10px;}
 .ch-card{border:1px solid var(--line);border-radius:10px;padding:8px;break-inside:avoid;}
 .ch-ex{position:relative;height:110px;margin-bottom:6px;}
+.ch-ex canvas{max-width:100%!important;}
 .ch-card.big .ch-ex{height:130px;}
 .ch-name{font-weight:700;font-size:12px;}
 .ch-when{font-size:11px;color:var(--mut);}
@@ -163,7 +163,7 @@ table.g td{padding:7px 10px;border-bottom:1px solid var(--line);}
 table.g tr:nth-child(even) td{background:var(--bg);}
 .foot{color:var(--mut);font-size:11px;text-align:center;padding:16px;border-top:1px solid var(--line);margin-top:20px;}
 .guide-sec h2{break-after:avoid;}
-@page{margin:14mm;}
+@page{margin:0;}
 </style></head><body>
 
 <div class="cover">
@@ -320,7 +320,7 @@ mk('g_waterfall',function(){IDG_CHARTS.waterfall('g_waterfall',[{label:'A',value
   const browser = await chromium.launch();
   // Render at ~A4 content width so Chart.js sizes canvases to the final PDF
   // layout (avoids charts overflowing their cards).
-  const page = await browser.newPage({ viewport: { width: 780, height: 1400 } });
+  const page = await browser.newPage({ viewport: { width: 703, height: 1400 } });
   await page.setContent(HTML, { waitUntil: 'load' });
   await page.waitForFunction(() => window.Chart && window.Chart.getChart && window.Chart.getChart('g_waterfall'), null, { timeout: 20000 });
   await page.waitForTimeout(1500);
@@ -334,7 +334,7 @@ mk('g_waterfall',function(){IDG_CHARTS.waterfall('g_waterfall',[{label:'A',value
     try { await page.locator('.ch-grid').screenshot({ path: '/tmp/guide-grid.png' }); } catch(e){}
   }
   const outPdf = path.join(ROOT, 'user-guide-he.pdf');
-  await page.pdf({ path: outPdf, printBackground: true, format: 'A4', margin: { top: '12mm', bottom: '12mm', left: '10mm', right: '10mm' } });
+  await page.pdf({ path: outPdf, printBackground: true, format: 'A4', margin: { top: '12mm', bottom: '12mm', left: '12mm', right: '12mm' } });
   await browser.close();
   console.log('Wrote ' + outPdf + ' (' + Math.round(fs.statSync(outPdf).size / 1024) + ' KB)');
 })().catch((e) => { console.error(e); process.exit(1); });
