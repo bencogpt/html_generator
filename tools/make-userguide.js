@@ -162,7 +162,11 @@ table.g th{background:var(--p2);color:#fff;padding:7px 10px;text-align:start;}
 table.g td{padding:7px 10px;border-bottom:1px solid var(--line);}
 table.g tr:nth-child(even) td{background:var(--bg);}
 .foot{color:var(--mut);font-size:11px;text-align:center;padding:16px;border-top:1px solid var(--line);margin-top:20px;}
-.guide-sec h2{break-after:avoid;}
+/* Keep a section heading with the start of its text — if there's no room, the
+   heading moves to the top of the next page instead of being orphaned. */
+.guide-sec h2{break-after:avoid;break-inside:avoid;}
+.guide-sec h2 + *{break-before:avoid;}
+.guide-sec h3{break-after:avoid;}
 @page{margin:0;}
 </style></head><body>
 
@@ -211,8 +215,7 @@ ${section('3. חיבור למודל (Settings ← Connection)', `
 <li><b>מפתח API (אופציונלי):</b> נשמר <b>לסשן בלבד</b> כברירת מחדל (לא נכתב לדיסק).</li>
 <li><b>בדיקת חיבור:</b> שולח בקשת בדיקה קטנה ומציג זמן תגובה ושגיאות מפורטות.</li>
 </ul>
-${fig(s.connection, 'מסך החיבור: פרופילים, הגדרה מהירה, כתובת, מודל, מפתח, ובדיקת חיבור.')}
-<div class="note"><b>עובד ב-LiteLLM אך לא ב-OpenShift?</b> זו בעיית CORS. הריצו את הפרוקסי המצורף: <code>node tools/cors-proxy.js --upstream https://&lt;route&gt;</code> והגדירו את כתובת הבסיס ל-<code>http://localhost:8008/v1</code>. ראו גם פרק פתרון תקלות.</div>`)}
+${fig(s.connection, 'מסך החיבור: פרופילים, הגדרה מהירה, כתובת, מודל, מפתח, ובדיקת חיבור.')}`)}
 
 ${section('4. העלאת מסמך', `
 <p>גררו קובץ לאזור ההעלאה, לחצו לבחירה, או הדביקו טקסט גולמי. נתמכים: <b>.docx</b> (מומלץ), <b>.txt</b>, <b>.md</b>. קובצי <code>.doc</code> ישנים נדחים עם הנחיה לשמור מחדש כ-<code>.docx</code>.</p>
@@ -331,6 +334,9 @@ mk('g_waterfall',function(){IDG_CHARTS.waterfall('g_waterfall',[{label:'A',value
     await page.evaluate(() => { const el = [...document.querySelectorAll('.guide-sec h2')].find((h) => h.textContent.includes('סוגי התרשימים')); if (el) el.scrollIntoView(); });
     await page.waitForTimeout(500);
     await page.screenshot({ path: '/tmp/guide-charts.png' });
+    await page.evaluate(() => { const el=[...document.querySelectorAll('.guide-sec h2')].find(h=>h.textContent.includes('חיבור למודל')); if(el) el.scrollIntoView(); });
+    await page.waitForTimeout(400);
+    await page.screenshot({ path: '/tmp/guide-sec3.png' }); // guide-sec3
     try { await page.locator('.ch-grid').screenshot({ path: '/tmp/guide-grid.png' }); } catch(e){}
   }
   const outPdf = path.join(ROOT, 'user-guide-he.pdf');
