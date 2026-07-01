@@ -12,6 +12,7 @@
     "validate:report": "node tools/build.js && node tools/validate-report.js",
     "validate:diage": "node tools/build.js && node tools/validate-diage.js",
     "cheatsheet": "node tools/build.js && node tools/make-cheatsheet.js",
+    "userguide": "node tools/build.js && node tools/make-userguide.js",
     "e2e": "node tools/build.js && node tools/e2e.js",
     "screenshots": "node tools/screenshots.js",
     "proxy": "node tools/cors-proxy.js"
