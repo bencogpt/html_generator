@@ -137,7 +137,7 @@ body{font-family:'Heebo',system-ui,Arial,sans-serif;color:var(--ink);margin:0;li
 .toc h3{margin:0 0 8px;color:var(--p2);}
 .toc ol{margin:0;padding-inline-start:22px;columns:2;font-size:12.5px;}
 .toc li{margin:2px 0;}
-.guide-sec{break-inside:avoid-page;margin:22px 0;}
+.guide-sec{margin:22px 0;}
 .guide-sec h2{font-size:20px;font-weight:800;color:var(--p2);border-bottom:3px solid var(--p);display:inline-block;padding-bottom:4px;margin:0 0 12px;}
 .guide-sec h3{font-size:15px;margin:16px 0 4px;color:var(--ink);}
 .guide-sec p{margin:6px 0;}
@@ -162,7 +162,7 @@ table.g th{background:var(--p2);color:#fff;padding:7px 10px;text-align:start;}
 table.g td{padding:7px 10px;border-bottom:1px solid var(--line);}
 table.g tr:nth-child(even) td{background:var(--bg);}
 .foot{color:var(--mut);font-size:11px;text-align:center;padding:16px;border-top:1px solid var(--line);margin-top:20px;}
-@media print{.guide-sec{break-inside:avoid-page;}}
+.guide-sec h2{break-after:avoid;}
 @page{margin:14mm;}
 </style></head><body>
 
@@ -325,10 +325,13 @@ mk('g_waterfall',function(){IDG_CHARTS.waterfall('g_waterfall',[{label:'A',value
   await page.waitForFunction(() => window.Chart && window.Chart.getChart && window.Chart.getChart('g_waterfall'), null, { timeout: 20000 });
   await page.waitForTimeout(1500);
   if (process.env.GUIDE_PREVIEW) {
+    const drawn = await page.evaluate(() => [...document.querySelectorAll('.ch-ex canvas')].filter((c) => c.width > 0).length);
+    console.log('chart examples drawn: ' + drawn + '/17');
     await page.screenshot({ path: '/tmp/guide-top.png' });
     await page.evaluate(() => { const el = [...document.querySelectorAll('.guide-sec h2')].find((h) => h.textContent.includes('סוגי התרשימים')); if (el) el.scrollIntoView(); });
     await page.waitForTimeout(500);
     await page.screenshot({ path: '/tmp/guide-charts.png' });
+    try { await page.locator('.ch-grid').screenshot({ path: '/tmp/guide-grid.png' }); } catch(e){}
   }
   const outPdf = path.join(ROOT, 'user-guide-he.pdf');
   await page.pdf({ path: outPdf, printBackground: true, format: 'A4', margin: { top: '12mm', bottom: '12mm', left: '10mm', right: '10mm' } });
