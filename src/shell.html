@@ -69,6 +69,7 @@
       </div>
       <div class="palette-block">
         <span class="field-label" data-i18n="palette_title"></span>
+        <span class="small-note" data-i18n="palette_hint"></span>
         <div id="palette-row"></div>
       </div>
       <div class="gen-row">
@@ -222,8 +223,13 @@
       </div>
 
       <div id="tab-output" class="tab-pane" hidden>
+        <div class="pal-field">
+          <span class="field-label" data-i18n="out_palette"></span>
+          <span class="small-note" data-i18n="palette_hint"></span>
+          <input type="hidden" id="o-palette">
+          <div id="o-palette-cards" class="pal-grid"></div>
+        </div>
         <div class="grid2">
-          <label><span data-i18n="out_palette"></span><select id="o-palette"></select></label>
           <label><span data-i18n="out_lang"></span>
             <select id="o-lang">
               <option value="auto" data-i18n="out_lang_auto"></option>

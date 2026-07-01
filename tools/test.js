@@ -147,7 +147,7 @@ test('renderSystemPrompt fills placeholders', () => {
   const sp = IDG.prompt.renderSystemPrompt(IDG.store.state);
   assert.ok(!/\{\{(MAX_CHARTS|FLOW_RULE|PALETTE_JSON|LANG_RULE|SECTIONS_RULE)\}\}/.test(sp));
   assert.ok(sp.includes('{{BASE_CSS}}') && sp.includes('{{CHART_LIB}}'));  // tokens for the model stay
-  assert.ok(sp.includes('#2563EB'));
+  assert.ok(sp.includes(IDG.store.PALETTES[IDG.store.state.output.palette].primary), 'active palette primary injected');
   assert.ok(/try \{/.test(sp) && /catch/.test(sp), 'per-chart try/catch instruction present');
   // DIAGE features documented
   assert.ok(/tab-content|TABBED DASHBOARD/.test(sp), 'tabbed layout documented');
@@ -159,6 +159,13 @@ test('renderSystemPrompt fills placeholders', () => {
 test('energetic palette registered', () => {
   const pal = IDG.store.PALETTES['energetic'];
   assert.ok(pal && pal.series.length === 6 && pal.primary === '#2A9D8F', 'energetic palette present');
+});
+test('default palette is colorful; all palettes have a description', () => {
+  IDG.store.clearAll();
+  assert.equal(IDG.store.load().output.palette, 'colorful', 'default palette is colorful');
+  for (const [id, pal] of Object.entries(IDG.store.PALETTES)) {
+    assert.ok(pal.desc && pal.desc.length, id + ' has a description');
+  }
 });
 test('dark slate-premium palette + paletteCss surface tokens', () => {
   const pal = IDG.store.PALETTES['slate-premium'];

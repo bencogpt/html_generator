@@ -130,7 +130,7 @@ const externalReqs = [];
   await page.fill('#p-model', 'glm');
   await page.uncheck('#p-stream');
   await page.click('#settings-tabs [data-tab="tab-output"]');
-  await page.selectOption('#o-palette', 'slate-premium');
+  await page.click('#o-palette-cards .pal-card[data-palette="slate-premium"]');
   await page.click('#btn-settings-save');
   await page.click('#settings-modal .modal-foot .modal-close');
   await page.click('#paste-details summary');

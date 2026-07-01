@@ -62,11 +62,12 @@ browser trust an untrusted cert — so for **OpenShift AI**, the reliable path
 is to front the model with **LiteLLM** (which allows browser CORS) and point
 the generator at the LiteLLM URL. See CORS below.
 
-Palettes: Vibrant Tech Blues (default), Colorful (multi-hue indigo/rose/amber/
-emerald — vibrant, distinct chart colors), Slate Premium (dark glassmorphism /
-fintech theme — dark page, translucent cards, light text), Emerald Forest,
-Warm Sunset, Royal Violet, Slate Mono. Set in Settings → Output or the palette
-row on the main screen.
+Palettes are chosen from a labeled card picker (main screen and Settings →
+Output) — each card previews the hero gradient, the actual chart-series colors
+as dots, a name and a short description, with a "DARK" tag on dark themes:
+Colorful (**default** — multi-color charts), Vibrant Tech Blues, Energetic
+(warm teal/yellow/orange), Slate Premium (dark glassmorphism dashboard theme),
+Emerald Forest, Warm Sunset, Royal Violet, Slate Mono.
 
 ### Interactive dashboards (tabs, calculator, timeline)
 

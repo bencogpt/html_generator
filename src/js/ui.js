@@ -53,23 +53,36 @@
 
   /* ---------- main-screen pieces ---------- */
 
-  function renderPaletteRow() {
-    const row = U.$('#palette-row');
-    row.innerHTML = '';
-    const state = IDG.store.state;
+  /* Shared palette picker: labeled cards that preview the actual colors
+     (hero gradient bar + the real chart-series dots) + name + short desc, so
+     it's obvious what each produces. Used on the main screen and in Settings. */
+  function renderPalettePicker(container, current, onPick) {
+    container.innerHTML = '';
+    container.classList.add('pal-grid');
     for (const [id, pal] of Object.entries(IDG.store.PALETTES)) {
-      const b = global.document.createElement('button');
-      b.type = 'button';
-      b.className = 'swatch' + (state.output.palette === id ? ' on' : '');
-      b.title = pal.label;
-      b.style.background = `linear-gradient(135deg, ${pal.gradA}, ${pal.gradB})`;
-      b.addEventListener('click', () => {
-        state.output.palette = id;
-        IDG.store.save();
-        renderPaletteRow();
-      });
-      row.appendChild(b);
+      const card = global.document.createElement('button');
+      card.type = 'button';
+      card.className = 'pal-card' + (current === id ? ' on' : '');
+      card.setAttribute('data-palette', id);
+      card.setAttribute('aria-pressed', current === id ? 'true' : 'false');
+      const dots = (pal.series || []).slice(0, 6)
+        .map((c) => `<span class="pc-dot" style="background:${c}"></span>`).join('');
+      card.innerHTML =
+        `<div class="pc-bar" style="background:linear-gradient(135deg, ${pal.gradA}, ${pal.gradB})"></div>` +
+        `<div class="pc-dots">${dots}</div>` +
+        `<div class="pc-name">${U.esc(pal.label)}${pal.dark ? '<span class="pc-dark">DARK</span>' : ''}</div>` +
+        `<div class="pc-desc">${U.esc(pal.desc || '')}</div>`;
+      card.addEventListener('click', () => onPick(id));
+      container.appendChild(card);
     }
+  }
+
+  function renderPaletteRow() {
+    renderPalettePicker(U.$('#palette-row'), IDG.store.state.output.palette, (id) => {
+      IDG.store.state.output.palette = id;
+      IDG.store.save();
+      renderPaletteRow();
+    });
   }
 
   /* NFR-7: visible indicator of the endpoint that will receive the document. */
@@ -197,14 +210,14 @@
 
     bindGlobalFields() {
       U.$('#sp-editor').value = this.buffer.systemPrompt || IDG.prompt.DEFAULT_SYSTEM_PROMPT;
-      const palSel = U.$('#o-palette');
-      palSel.innerHTML = '';
-      for (const [id, pal] of Object.entries(IDG.store.PALETTES)) {
-        const o = global.document.createElement('option');
-        o.value = id; o.textContent = pal.label;
-        palSel.appendChild(o);
-      }
-      palSel.value = this.buffer.output.palette;
+      // palette card picker (value held in the hidden #o-palette input)
+      const onPickPalette = (id) => {
+        this.buffer.output.palette = id;
+        U.$('#o-palette').value = id;
+        renderPalettePicker(U.$('#o-palette-cards'), id, onPickPalette);
+      };
+      U.$('#o-palette').value = this.buffer.output.palette;
+      renderPalettePicker(U.$('#o-palette-cards'), this.buffer.output.palette, onPickPalette);
       U.$('#o-lang').value = this.buffer.output.langOverride;
       U.$('#o-detail').value = this.buffer.output.detailLevel || 'balanced';
       U.$('#o-maxcharts').value = this.buffer.output.maxCharts;
