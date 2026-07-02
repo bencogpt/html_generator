@@ -21,8 +21,12 @@ performance/metrics dashboard.
    `GET /v1/models`), and press **Test connection**.
 3. Drop a `.docx` (or `.txt`/`.md`, or paste raw text), check the extraction
    preview, choose a palette, and **Generate**. Settings → Output has a
-   **Detail level** (Concise / Balanced / Comprehensive) to control how much of
-   the document the report covers.
+   **Detail level** (Concise / Balanced / Comprehensive) and a **Report
+   layout** control (Auto — the model decides from the data — / Tabbed
+   dashboard / Single scroll). If the model hits the max-token ceiling the
+   run is flagged truncated with guidance to raise the limit (no repair pass
+   is wasted), and the last generated report survives a page refresh — a
+   restore banner brings it back.
 4. Export the result, four ways: **Download HTML** (interactive single file —
    Chart.js, stylesheet and Heebo font embedded), **PDF** (print dialog →
    "Save as PDF"; portable, no scripts, correct colors and page breaks),

@@ -62,9 +62,19 @@
       try {
         const res = await global.fetch(url, Object.assign({}, options, { signal: ctl.signal }));
         clearTimeout(timer);
-        if (res.status >= 500 && attempt < maxRetries) {
+        // Retry on 5xx and on 429 (rate limit) — for 429, honor Retry-After
+        // (seconds or HTTP-date), capped at 30s; else exponential backoff.
+        if ((res.status >= 500 || res.status === 429) && attempt < maxRetries) {
           attempt++; lastErr = Object.assign(new Error('HTTP ' + res.status), { res });
-          await new Promise((r) => setTimeout(r, 500 * Math.pow(2, attempt)));
+          let delayMs = 500 * Math.pow(2, attempt);
+          if (res.status === 429) {
+            const ra = res.headers.get('retry-after');
+            if (ra) {
+              const secs = /^\d+$/.test(ra.trim()) ? parseInt(ra, 10) : (Date.parse(ra) - Date.now()) / 1000;
+              if (isFinite(secs) && secs >= 0) delayMs = Math.min(secs * 1000, 30000);
+            }
+          }
+          await new Promise((r) => setTimeout(r, delayMs));
           continue;
         }
         return res;
@@ -148,6 +158,9 @@
     return {
       text: String(text),
       tokensIn: usage.tokensIn, tokensOut: usage.tokensOut, usageEstimated: usage.estimated,
+      // 'length' means the reply hit max_tokens and is truncated (surfaced to
+      // the user instead of wasting a repair pass on an incomplete document).
+      finishReason: getPath(data, 'choices.0.finish_reason') ?? null,
       ttftMs: ttftMs, latencyMs: Date.now() - started,
     };
   }
@@ -155,7 +168,7 @@
   async function readSSE(res, messages, started, onToken, signal) {
     const reader = res.body.getReader();
     const decoder = new TextDecoder('utf-8');
-    let buffer = '', text = '', ttftMs = null, usage = null, tokens = 0;
+    let buffer = '', text = '', ttftMs = null, usage = null, tokens = 0, finishReason = null;
     for (;;) {
       const { done, value } = await reader.read();
       if (done) break;
@@ -175,6 +188,8 @@
         try { chunk = JSON.parse(payload); } catch (e) { continue; }
         const u = mapUsage(chunk);
         if (u) usage = u;
+        const fr = getPath(chunk, 'choices.0.finish_reason');
+        if (fr) finishReason = fr;
         const delta = getPath(chunk, 'choices.0.delta.content') ?? getPath(chunk, 'choices.0.text');
         if (delta) {
           if (ttftMs == null) ttftMs = Date.now() - started;
@@ -193,7 +208,7 @@
     }
     return {
       text, tokensIn: usage.tokensIn, tokensOut: usage.tokensOut, usageEstimated: usage.estimated,
-      ttftMs, latencyMs: Date.now() - started,
+      finishReason, ttftMs, latencyMs: Date.now() - started,
     };
   }
 
@@ -255,6 +270,7 @@
       tokensIn: tIn ?? (mapped ? mapped.tokensIn : estimateTokens(system + prompt)),
       tokensOut: tOut ?? (mapped ? mapped.tokensOut : estimateTokens(text)),
       usageEstimated: estimated,
+      finishReason: getPath(data, 'choices.0.finish_reason') ?? null,
       ttftMs: null, latencyMs: Date.now() - started,
     };
   }

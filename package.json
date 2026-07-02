@@ -16,7 +16,8 @@
     "e2e": "node tools/build.js && node tools/e2e.js",
     "screenshots": "node tools/screenshots.js",
     "proxy": "node tools/cors-proxy.js",
-    "pipeline-doc": "node tools/make-pipeline-doc.js"
+    "pipeline-doc": "node tools/make-pipeline-doc.js",
+    "test:llm": "node tools/llm-test.js"
   },
   "license": "MIT",
   "dependencies": {

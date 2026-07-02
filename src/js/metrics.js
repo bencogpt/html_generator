@@ -88,7 +88,7 @@
   const CSV_COLS = [
     'id', 'timestamp', 'source', 'model', 'profile', 'status', 'passes',
     'tokens_in', 'tokens_out', 'tokens_estimated', 'ttft_ms', 'latency_ms',
-    'tokens_per_sec', 'retries', 'error_code', 'output_bytes', 'model_bytes',
+    'tokens_per_sec', 'truncated', 'retries', 'error_code', 'output_bytes', 'model_bytes',
     'injected_bytes', 'lint_found', 'lint_fixed', 'cost_estimate',
     'source_words', 'source_tables', 'source_language',
   ];
@@ -102,6 +102,7 @@
         r.tokensIn, r.tokensOut, r.estimated ? 'yes' : 'no',
         r.ttftMs != null ? Math.round(r.ttftMs) : '', Math.round(r.latencyMs || 0),
         r.tokPerSec != null ? r.tokPerSec.toFixed(2) : '',
+        r.truncated ? 'yes' : 'no',
         r.retries || 0, r.errorCode || '',
         r.outputBytes || '', r.modelBytes || '', r.injectedBytes || '',
         r.lintFound || 0, r.lintFixed || 0,

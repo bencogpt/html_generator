@@ -106,7 +106,11 @@ const server = http.createServer((req, res) => {
       chatCalls++;
       const isRepair = msgStr.includes('previous HTML output has problems');
       const isCharts = msgStr.includes('CHARTS_TEST');
-      const content = isPing ? 'pong' : isCharts ? CHARTS_HTML : isRepair ? CLEAN_HTML : DIRTY_HTML;
+      // TRUNC_TEST: reply cut off mid-document with finish_reason 'length'
+      const isTrunc = msgStr.includes('TRUNC_TEST');
+      const content = isPing ? 'pong'
+        : isTrunc ? '<!DOCTYPE html>\n<html lang="he" dir="rtl"><head><meta charset="UTF-8">{{BASE_CSS}}\n{{CHART_LIB}}</head><body><div class="container"><section class="card"><h2 class="section-title">חלקי</h2><p>הדוח נקטע כא'
+        : isCharts ? CHARTS_HTML : isRepair ? CLEAN_HTML : DIRTY_HTML;
 
       if (parsed.stream) {
         res.writeHead(200, Object.assign({ 'Content-Type': 'text/event-stream' }, cors));
@@ -114,6 +118,9 @@ const server = http.createServer((req, res) => {
         for (const p of pieces) {
           res.write('data: ' + JSON.stringify({ choices: [{ delta: { content: p } }] }) + '\n\n');
         }
+        res.write('data: ' + JSON.stringify({
+          choices: [{ delta: {}, finish_reason: isTrunc ? 'length' : 'stop' }],
+        }) + '\n\n');
         res.write('data: ' + JSON.stringify({
           choices: [],
           usage: { prompt_tokens: 321, completion_tokens: 654 },
@@ -123,7 +130,7 @@ const server = http.createServer((req, res) => {
       }
       res.writeHead(200, Object.assign({ 'Content-Type': 'application/json' }, cors));
       return res.end(JSON.stringify({
-        choices: [{ message: { content } }],
+        choices: [{ message: { content }, finish_reason: isTrunc ? 'length' : 'stop' }],
         usage: { prompt_tokens: 11, completion_tokens: 2 },
       }));
     });
@@ -214,20 +221,28 @@ const server = http.createServer((req, res) => {
   assert.ok(testResult.includes('11/2'), 'test connection reports server usage: ' + testResult);
   console.log('✓ test connection + fetch models:', testResult.trim());
 
-  // user-selectable detail level (Output tab)
+  // user-selectable detail level + report layout (Output tab)
   await page.click('#settings-tabs [data-tab="tab-output"]');
   const detailOpts = await page.$$eval('#o-detail option', (els) => els.map((e) => e.value));
   assert.deepEqual(detailOpts, ['concise', 'balanced', 'comprehensive'], 'detail-level options present');
+  const layoutOpts = await page.$$eval('#o-layout option', (els) => els.map((e) => e.value));
+  assert.deepEqual(layoutOpts, ['auto', 'tabs', 'scroll'], 'layout options present');
   await page.selectOption('#o-detail', 'comprehensive');
+  await page.selectOption('#o-layout', 'scroll');
   await page.click('#btn-settings-save');
   await page.click('#settings-modal .modal-foot .modal-close');
 
   // settings persistence (acceptance #3): reload, value must survive
   await page.reload();
   await page.waitForFunction(() => document.querySelector('#endpoint-url').textContent.includes('127.0.0.1'));
-  const persistedDetail = await page.evaluate(() => JSON.parse(localStorage.getItem('idg.settings.v1')).output.detailLevel);
-  assert.equal(persistedDetail, 'comprehensive', 'detail level persisted across reload');
-  console.log('✓ settings persisted across reload (incl. detail level)');
+  const persistedOut = await page.evaluate(() => JSON.parse(localStorage.getItem('idg.settings.v1')).output);
+  assert.equal(persistedOut.detailLevel, 'comprehensive', 'detail level persisted across reload');
+  assert.equal(persistedOut.layout, 'scroll', 'layout persisted across reload');
+  // back to auto so later scenarios use the default layout rule
+  await page.evaluate(() => { const s = JSON.parse(localStorage.getItem('idg.settings.v1')); s.output.layout = 'auto'; localStorage.setItem('idg.settings.v1', JSON.stringify(s)); });
+  await page.reload();
+  await page.waitForFunction(() => document.querySelector('#endpoint-url').textContent.includes('127.0.0.1'));
+  console.log('✓ settings persisted across reload (incl. detail level + layout)');
 
   // re-ingest after reload — this time a real Hebrew .docx through mammoth
   // (acceptance #1), then generate
@@ -374,6 +389,36 @@ const server = http.createServer((req, res) => {
   assert.ok(!/(?:src|href)=["'](?:https?:)?\/\//.test(chartsSrcdoc), 'map/heatmap artifact has no external refs');
   console.log('✓ expanded charts: polarArea + heatmap + choropleth + bubbleMap render offline (' + chartInfo.countries + ' countries embedded)');
   console.log('✓ flow diagram: stray arrow glyph hidden, single CSS chevron (font-size ' + chartInfo.flow.fontPx + ', chevron ' + chartInfo.flow.afterW + 'px)');
+
+  // truncation detection: the model hits max tokens (finish_reason 'length')
+  // → user-facing warning, run flagged, NO repair round-trip wasted
+  const callsBeforeTrunc = chatCalls;
+  await page.evaluate(() => { document.getElementById('paste-details').open = true; });
+  await page.fill('#paste-area', 'TRUNC_TEST — מסמך שיגרום לפלט קטוע.');
+  await page.click('#btn-paste-use');
+  await page.click('#btn-generate');
+  await page.waitForFunction(() => !document.querySelector('#btn-generate').hidden, null, { timeout: 30000 });
+  const truncRun = await page.evaluate(() => { const r = JSON.parse(localStorage.getItem('idg.metrics.v1')); return r[r.length - 1]; });
+  assert.equal(truncRun.truncated, true, 'run flagged truncated');
+  assert.equal((truncRun.passes || []).length, 1, 'no repair pass wasted on truncated output (passes=' + (truncRun.passes || []).length + ')');
+  assert.equal(chatCalls - callsBeforeTrunc, 1, 'exactly one model call for the truncated run');
+  const truncWarn = await page.$$eval('#warnings .banner', (els) => els.map((e) => e.textContent).join(' ;; '));
+  assert.ok(/Max output tokens|מקס׳ טוקנים/.test(truncWarn), 'truncation warning shown: ' + truncWarn);
+  console.log('✓ truncation: finish_reason=length → warning + flagged run + repair skipped');
+
+  // keep-last-report: reload loses nothing — a restore banner brings the
+  // last result back from IndexedDB
+  await page.reload();
+  await page.waitForFunction(() => document.querySelector('#endpoint-url').textContent.includes('127.0.0.1'));
+  await page.waitForSelector('#warnings .banner button', { timeout: 10000 });
+  const restoreText = await page.textContent('#warnings .banner');
+  assert.ok(/previous report|דוח קודם/i.test(restoreText), 'restore banner offered: ' + restoreText);
+  await page.click('#warnings .banner button');
+  await page.waitForSelector('#result-frame:not([hidden])');
+  const restoredDoc = await page.getAttribute('#result-frame', 'srcdoc');
+  assert.ok(restoredDoc && restoredDoc.includes('<!DOCTYPE html>'), 'last report restored after reload');
+  assert.ok(await page.isEnabled('#btn-download'), 'exports enabled after restore');
+  console.log('✓ keep-last-report: restored from IndexedDB after reload');
 
   // legacy .doc rejection (FR-12 / acceptance #6)
   await page.keyboard.press('Escape');

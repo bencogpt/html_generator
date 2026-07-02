@@ -140,13 +140,23 @@
       let repairedByFences = IDG.post.looksLikeFences(raw);
       raw = IDG.post.stripFences(raw);
 
+      /* Truncated output: the model hit the max-token ceiling mid-document.
+         A repair round-trip would truncate again at the same ceiling, so skip
+         it, salvage what rendered, and tell the user to raise Max output
+         tokens (Settings → Connection). */
+      const truncated = mainRes.finishReason === 'length';
+      if (truncated) {
+        runRec.truncated = true;
+        warnings.push({ key: 'warn_truncated' });
+      }
+
       /* ---- lint + single repair round-trip (FR-23) ---- */
       let violations = IDG.post.lintExternal(raw);
       let validation = IDG.post.validate(raw);
       let repaired = false;
-      const needsRepair = violations.length > 0 || !validation.parses ||
+      const needsRepair = !truncated && (violations.length > 0 || !validation.parses ||
         (validation.hasChartInit && !validation.hasCanvas) ||
-        !/<html[\s>]|<!doctype/i.test(raw);
+        !/<html[\s>]|<!doctype/i.test(raw));
 
       if (needsRepair) {
         if (opts.onProgress) opts.onProgress('repair', {});

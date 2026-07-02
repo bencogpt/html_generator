@@ -19,13 +19,8 @@ OUTPUT CONTRACT — follow exactly:
 5. Use ONLY data that appears in the source document. Never invent numbers. If the document has no quantitative data, use qualitative visualizations instead: capability matrices, timelines, CSS flow diagrams, comparison cards.
 6. INTERACTIVITY is optional. You MAY add interactive elements (a tabbed dashboard, a slider calculator). Any such JavaScript must be INLINE in a <script> at the end of <body>, wrapped in try/catch, and SANDBOX-SAFE: NEVER call alert(), confirm(), or prompt() — they are blocked inside sandboxed iframes and will crash the page; show messages via an inline element or IDG_NOTICE(title, body) instead. Use textContent (not innerHTML) when writing user/data values.
 
-LAYOUT — choose based on the data:
-- DEFAULT: a single vertical scroll of <section class="card"> blocks (best for most documents).
-- TABBED DASHBOARD: if the document naturally splits into 3+ distinct themes (e.g. the document has several major parts), you MAY organize it as tabs. Build it as:
-  <div class="tabs" data-tab-group="g1"><button class="tab-btn" data-tab="t1">Label 1</button><button class="tab-btn" data-tab="t2">Label 2</button>…</div>
-  <div class="tab-content active" data-tab-group="g1" data-tab="t1"> … sections … </div>
-  <div class="tab-content" data-tab-group="g1" data-tab="t2"> … </div> …
-  Tabs are wired automatically (no script needed) and charts inside hidden tabs resize when shown. Mark the first pane "active". Put charts for ALL tabs in the single end-of-body chart <script> as usual.
+LAYOUT:
+{{LAYOUT_RULE}}
 
 STRUCTURE (model it on a professional market-survey infographic):
 - Hero header: <header class="hero"> with an emoji icon (<span class="icon">), an <h1> title and a <p class="subtitle"> — derived from the document.
@@ -88,6 +83,22 @@ Keep every number EXACTLY as it appears in the text. Keep the document's origina
     comprehensive: 'Produce as many content sections as the document needs to be covered thoroughly (typically 6–12, more for long documents); include every major topic, section and data point from the document and do not omit or over-summarize content',
   };
 
+  /* Report layout (Settings → Output): auto = model decides from the data;
+     tabs / scroll force the choice. */
+  const TABS_MARKUP =
+    `Build tabs as:
+  <div class="tabs" data-tab-group="g1"><button class="tab-btn" data-tab="t1">Label 1</button><button class="tab-btn" data-tab="t2">Label 2</button>…</div>
+  <div class="tab-content active" data-tab-group="g1" data-tab="t1"> … sections … </div>
+  <div class="tab-content" data-tab-group="g1" data-tab="t2"> … </div> …
+  Tabs are wired automatically (no script needed) and charts inside hidden tabs resize when shown. Mark the first pane "active". Put charts for ALL tabs in the single end-of-body chart <script> as usual.`;
+  const LAYOUT_RULES = {
+    auto: `Choose based on the data:
+- DEFAULT: a single vertical scroll of <section class="card"> blocks (best for most documents).
+- TABBED DASHBOARD: if the document naturally splits into 3+ distinct themes (e.g. the document has several major parts), you MAY organize it as tabs. ${TABS_MARKUP}`,
+    tabs: `Organize the report as a TABBED DASHBOARD: group the content into 3–6 thematic tabs (only fall back to a single scroll if the document is trivially small). ${TABS_MARKUP}`,
+    scroll: 'Use a SINGLE vertical scrolling page of <section class="card"> blocks. Do NOT use tabs or .tab-content anywhere.',
+  };
+
   function paletteFor(state) {
     return IDG.store.PALETTES[state.output.palette] || IDG.store.PALETTES['vibrant-tech-blues'];
   }
@@ -105,8 +116,10 @@ Keep every number EXACTLY as it appears in the text. Keep the document's origina
       if (m) langRule = `LANGUAGE OVERRIDE: write the entire infographic in ${m[0]} with dir="${m[1]}", regardless of the document language.`;
     }
     const sectionsRule = SECTIONS_RULES[state.output.detailLevel] || SECTIONS_RULES.balanced;
+    const layoutRule = LAYOUT_RULES[state.output.layout] || LAYOUT_RULES.auto;
     return base
       .split('{{SECTIONS_RULE}}').join(sectionsRule)
+      .split('{{LAYOUT_RULE}}').join(layoutRule)
       .split('{{MAX_CHARTS}}').join(String(state.output.maxCharts || 3))
       .split('{{FLOW_RULE}}').join(flowRule)
       .split('{{PALETTE_JSON}}').join(JSON.stringify({

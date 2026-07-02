@@ -160,6 +160,64 @@
     };
   }
 
+  /* ---------- keep-last-report (IndexedDB; a refresh no longer loses a
+     multi-minute generation). Outputs are still not archived — only the most
+     recent result is kept, and "Clear everything" wipes it. ---------- */
+
+  function idb() {
+    return new Promise((resolve, reject) => {
+      const req = global.indexedDB.open('idg-store', 1);
+      req.onupgradeneeded = () => req.result.createObjectStore('kv');
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+  }
+  async function idbSet(key, value) {
+    const db = await idb();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction('kv', 'readwrite');
+      tx.objectStore('kv').put(value, key);
+      tx.oncomplete = () => { db.close(); resolve(); };
+      tx.onerror = () => { db.close(); reject(tx.error); };
+    });
+  }
+  async function idbGet(key) {
+    const db = await idb();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction('kv', 'readonly');
+      const rq = tx.objectStore('kv').get(key);
+      rq.onsuccess = () => { db.close(); resolve(rq.result); };
+      rq.onerror = () => { db.close(); reject(rq.error); };
+    });
+  }
+
+  async function saveLastResult(res) {
+    try {
+      await idbSet('lastResult', { html: res.html, rawHtml: res.rawHtml, run: res.run, ts: Date.now() });
+    } catch (e) { /* file:// privacy modes / quota — feature degrades silently */ }
+  }
+
+  async function offerRestore() {
+    try {
+      const saved = await idbGet('lastResult');
+      if (!saved || !saved.html || currentResult) return;
+      const div = global.document.createElement('div');
+      div.className = 'banner warn';
+      div.textContent = t('restore_last', { date: U.fmtDate(saved.ts) }) + ' ';
+      const btn = global.document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'btn small';
+      btn.textContent = t('btn_restore');
+      btn.addEventListener('click', () => {
+        currentResult = { html: saved.html, rawHtml: saved.rawHtml, run: saved.run };
+        showResult(saved.html);
+        div.remove();
+      });
+      div.appendChild(btn);
+      U.$('#warnings').appendChild(div);
+    } catch (e) { /* noop */ }
+  }
+
   async function generate(feedback) {
     if (!currentExtraction) return;
     IDG.ui.clearBanners();
@@ -174,6 +232,7 @@
       });
       currentResult = res;
       showResult(res.html);
+      saveLastResult(res);
       for (const w of res.warnings) IDG.ui.banner('warn', t(w.key, w.vars));
       IDG.ui.statusBar.setDot('green');
     } catch (err) {
@@ -372,6 +431,7 @@
       IDG.store.save();
       applyLanguage();
     });
+    offerRestore();
   }
 
   IDG.main = { init, refreshDropSub, generate };

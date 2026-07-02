@@ -189,6 +189,29 @@ test('colorful palette exists and reaches the prompt', () => {
   assert.ok(sp.includes('#F43F5E') && sp.includes('#10B981'), 'colorful series colors injected into prompt');
   s.output.palette = 'vibrant-tech-blues';
 });
+test('layout control changes the prompt layout rule', () => {
+  const s = IDG.store.load();
+  assert.equal(s.output.layout, 'auto', 'default layout is auto');
+  assert.match(IDG.prompt.renderSystemPrompt(s), /you MAY organize it as tabs/i);
+  s.output.layout = 'tabs';
+  assert.match(IDG.prompt.renderSystemPrompt(s), /Organize the report as a TABBED DASHBOARD/);
+  s.output.layout = 'scroll';
+  const sp = IDG.prompt.renderSystemPrompt(s);
+  assert.match(sp, /Do NOT use tabs/);
+  assert.ok(!/data-tab-group/.test(sp), 'scroll mode omits tab markup');
+  assert.ok(!/\{\{LAYOUT_RULE\}\}/.test(sp), 'token replaced');
+  s.output.layout = 'auto';
+});
+test('metrics CSV includes truncated column', () => {
+  IDG.metrics.clear();
+  IDG.metrics.record({ id: 't1', ts: Date.now(), source: 'a', model: 'm', status: 'success', passes: [], tokensIn: 1, tokensOut: 2, latencyMs: 5, truncated: true });
+  const lines = IDG.metrics.toCSV().split('\r\n');
+  const cols = lines[0].replace('﻿', '').split(',');
+  const i = cols.indexOf('truncated');
+  assert.ok(i > -1, 'truncated column present');
+  assert.equal(lines[1].split(',')[i], 'yes');
+  IDG.metrics.clear();
+});
 test('detail level changes section guidance', () => {
   const s = IDG.store.load();
   s.output.detailLevel = 'concise';

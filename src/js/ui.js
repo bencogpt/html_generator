@@ -219,6 +219,7 @@
       U.$('#o-palette').value = this.buffer.output.palette;
       renderPalettePicker(U.$('#o-palette-cards'), this.buffer.output.palette, onPickPalette);
       U.$('#o-lang').value = this.buffer.output.langOverride;
+      U.$('#o-layout').value = this.buffer.output.layout || 'auto';
       U.$('#o-detail').value = this.buffer.output.detailLevel || 'balanced';
       U.$('#o-maxcharts').value = this.buffer.output.maxCharts;
       U.$('#o-flow').checked = !!this.buffer.output.includeFlow;
@@ -230,6 +231,7 @@
       this.buffer.systemPrompt = ed.trim() && ed !== IDG.prompt.DEFAULT_SYSTEM_PROMPT ? ed : null;
       this.buffer.output.palette = U.$('#o-palette').value;
       this.buffer.output.langOverride = U.$('#o-lang').value;
+      this.buffer.output.layout = U.$('#o-layout').value;
       this.buffer.output.detailLevel = U.$('#o-detail').value;
       this.buffer.output.maxCharts = Math.max(0, parseInt(U.$('#o-maxcharts').value, 10) || 3);
       this.buffer.output.includeFlow = U.$('#o-flow').checked;
@@ -498,6 +500,7 @@
       dr.innerHTML = `<td colspan="11"><b>${U.esc(t('run_details'))}</b> — ` +
         `${U.esc(passes || '—')}<br>` +
         `output: ${U.esc(sizes)} · lint: ${r.lintFound || 0}/${r.lintFixed || 0} · retries: ${r.retries || 0}` +
+        `${r.truncated ? ' · <span class="est-flag">truncated (max tokens)</span>' : ''}` +
         `${r.errorCode ? ' · error: ' + U.esc(r.errorCode) : ''}` +
         `${r.extract ? ' · source: ' + U.fmtInt(r.extract.words) + ' words, ' + (r.extract.tables || 0) + ' tables, ' + U.esc(r.extract.lang || '') : ''}` +
         `</td>`;

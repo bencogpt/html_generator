@@ -134,6 +134,7 @@
       output: {
         palette: 'colorful',             // multi-color default
         langOverride: 'auto',            // auto | he | en | ar
+        layout: 'auto',                  // auto | tabs | scroll
         detailLevel: 'balanced',         // concise | balanced | comprehensive
         maxCharts: 3,
         includeFlow: true,
@@ -255,6 +256,7 @@
         global.localStorage.removeItem(KEY);
         global.localStorage.removeItem('idg.metrics.v1');
       } catch (e) { /* noop */ }
+      try { global.indexedDB && global.indexedDB.deleteDatabase('idg-store'); } catch (e) { /* saved report */ }
       state = null;
       load();
     },
