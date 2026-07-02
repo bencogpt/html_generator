@@ -15,7 +15,8 @@
     "userguide": "node tools/build.js && node tools/make-userguide.js",
     "e2e": "node tools/build.js && node tools/e2e.js",
     "screenshots": "node tools/screenshots.js",
-    "proxy": "node tools/cors-proxy.js"
+    "proxy": "node tools/cors-proxy.js",
+    "pipeline-doc": "node tools/make-pipeline-doc.js"
   },
   "license": "MIT",
   "dependencies": {
