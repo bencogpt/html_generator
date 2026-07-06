@@ -33,7 +33,11 @@ performance/metrics dashboard.
    **Static HTML** (a script-free copy — charts are snapshotted to embedded
    PNG images and every `<script>`/`<canvas>` is removed, so it renders with
    JavaScript disabled / under strict CSP; chart interactivity becomes static),
-   or **Copy**. Regenerate with free-text feedback if you want changes.
+   or **Copy**. Regenerate with free-text feedback if you want changes — or
+   use **Edit** for small manual fixes without a regeneration: click any text
+   to change it in place, hover an element (chart, section, headline, card…)
+   and remove it with ✕ (or remove its whole section), with undo. Done bakes
+   the changes in, so every export uses the edited report.
 
 The only network traffic the generator ever produces is to the endpoint you
 configured. Legacy binary `.doc` files are rejected with a "re-save as .docx"

@@ -130,6 +130,7 @@
     U.$('#progress').hidden = !busy;
     U.$('#btn-regen').disabled = busy || !currentResult;
     U.$('#regen-input').disabled = busy || !currentResult;
+    U.$('#btn-edit').disabled = busy || !currentResult;
     if (!busy) {
       clearInterval(elapsedTimer);
       elapsedTimer = null;
@@ -259,8 +260,124 @@
     U.$('#btn-pdf').disabled = false;
     U.$('#btn-static').disabled = false;
     U.$('#btn-copy').disabled = false;
+    U.$('#btn-edit').disabled = false;
     U.$('#btn-regen').disabled = false;
     U.$('#regen-input').disabled = false;
+  }
+
+  /* ---------- in-preview edit mode ----------
+     Lets the user make small manual changes without a full regeneration:
+     click any text to edit it in place, hover an element and remove it with
+     ✕ (or remove its whole section), with undo for deletions. The editor is
+     a script injected into the report inside the SAME sandboxed iframe
+     (allow-scripts, NO same-origin — model HTML still can't reach the
+     generator's storage/keys); the edited document is handed back via
+     postMessage, editor artifacts stripped. On Done the result replaces
+     currentResult.html, so Download / PDF / Static HTML / Copy all export
+     the edited report, and it becomes the saved last report. Deleting a
+     chart is safe: chart init code is per-canvas try/catch'd with
+     existence guards, so remaining charts still render on reload. */
+
+  let editing = false;
+
+  const EDITOR_RUNTIME =
+    '<script id="idg-editor-rt">(function(){\n' +
+    'var undoStack=[];\n' +
+    'var SEL="section.card,.chart-box,.kpi,.entity-card,.stat,.callout,.timeline-item,.num-item,.flow-step,.flow,.table-wrap,.tabs,.tab-content,.hero,.footer,figure,h1,h2,h3,h4,p,li";\n' +
+    'var TXT="h1,h2,h3,h4,h5,h6,p,li,td,th,figcaption,.value,.label,.subtitle,.sv,.sl,.rl,.t-date,.t-title,.t-body,.step-title,.tab-btn,.pill,.badge,.ct";\n' +
+    'var css=document.createElement("style");css.id="idg-editor-css";\n' +
+    'css.textContent=".idg-hov{outline:2px dashed #F43F5E !important;outline-offset:2px;}"+\n' +
+    '"#idg-delbar{position:fixed;z-index:99999;display:none;gap:4px;}"+\n' +
+    '"#idg-delbar button{background:#F43F5E;color:#fff;border:none;border-radius:6px;padding:2px 9px;font:600 12px system-ui;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.35);}"+\n' +
+    '"#idg-delbar button.sec{background:#7C3AED;}"+\n' +
+    '"[contenteditable]:focus{outline:2px solid #4F46E5 !important;outline-offset:2px;}";\n' +
+    'document.head.appendChild(css);\n' +
+    'document.querySelectorAll(TXT).forEach(function(el){el.setAttribute("contenteditable","true");el.setAttribute("spellcheck","false");});\n' +
+    'var bar=document.createElement("div");bar.id="idg-delbar";\n' +
+    'var rtl=(document.documentElement.getAttribute("dir")||"").toLowerCase()==="rtl";\n' +
+    'var bEl=document.createElement("button");bEl.id="idg-del-el";bEl.type="button";bEl.textContent="\\u2715";\n' +
+    'var bSec=document.createElement("button");bSec.id="idg-del-sec";bSec.type="button";bSec.className="sec";bSec.textContent="\\u2715 "+(rtl?"\\u05DE\\u05E7\\u05D8\\u05E2":"section");\n' +
+    'bar.appendChild(bEl);bar.appendChild(bSec);document.body.appendChild(bar);\n' +
+    'var current=null,currentSection=null;\n' +
+    'function place(el){var r=el.getBoundingClientRect();bar.style.display="flex";bar.style.top=Math.max(2,r.top-10)+"px";\n' +
+    'if(rtl){bar.style.left="";bar.style.right=Math.max(2,window.innerWidth-r.right)+"px";}else{bar.style.right="";bar.style.left=Math.max(2,r.left)+"px";}}\n' +
+    'document.addEventListener("mouseover",function(e){if(bar.contains(e.target))return;\n' +
+    'var t=e.target.closest?e.target.closest(SEL):null;\n' +
+    'if(current&&current!==t)current.classList.remove("idg-hov");\n' +
+    'current=t;\n' +
+    'if(t){t.classList.add("idg-hov");var sec=t.closest("section.card");currentSection=(sec&&sec!==t)?sec:null;bSec.style.display=currentSection?"":"none";place(t);}\n' +
+    'else{bar.style.display="none";}});\n' +
+    'function del(el){if(!el)return;undoStack.push({el:el,parent:el.parentNode,next:el.nextSibling});el.remove();bar.style.display="none";\n' +
+    'if(current){current.classList.remove("idg-hov");current=null;}currentSection=null;notify();}\n' +
+    'bEl.addEventListener("click",function(){del(current);});\n' +
+    'bSec.addEventListener("click",function(){del(currentSection);});\n' +
+    'function notify(){try{parent.postMessage({__idgEdit:"state",undo:undoStack.length},"*");}catch(e){}}\n' +
+    'window.addEventListener("message",function(e){var d=e.data||{};\n' +
+    'if(d.__idgEdit==="undo"){var u=undoStack.pop();if(u&&u.parent){try{u.parent.insertBefore(u.el,u.next);}catch(err){}}notify();}\n' +
+    'if(d.__idgEdit==="finish"){finish();}});\n' +
+    'function finish(){try{\n' +
+    'bar.remove();css.remove();\n' +
+    'document.querySelectorAll("[contenteditable]").forEach(function(el){el.removeAttribute("contenteditable");el.removeAttribute("spellcheck");});\n' +
+    'document.querySelectorAll(".idg-hov").forEach(function(el){el.classList.remove("idg-hov");});\n' +
+    'var self=document.getElementById("idg-editor-rt");if(self)self.remove();\n' +
+    'var html="<!DOCTYPE html>\\n"+document.documentElement.outerHTML;\n' +
+    'parent.postMessage({__idgEdit:"done",html:html},"*");\n' +
+    '}catch(err){parent.postMessage({__idgEdit:"error",detail:String(err&&err.message||err)},"*");}}\n' +
+    'notify();\n' +
+    '})();<\/script>';
+
+  function setEditUI(on) {
+    U.$('#edit-tools').hidden = !on;
+    U.$('#btn-edit').hidden = on;
+    // Exports/regen act on the applied report — disable them mid-edit so
+    // they can't grab the un-applied version.
+    ['#btn-download', '#btn-pdf', '#btn-static', '#btn-copy', '#btn-regen', '#btn-generate'].forEach((s) => {
+      U.$(s).disabled = on;
+    });
+    U.$('#regen-input').disabled = on;
+    U.$('#btn-edit-undo').disabled = true;
+  }
+
+  function enterEdit() {
+    if (!currentResult || editing) return;
+    editing = true;
+    IDG.ui.clearBanners();
+    IDG.ui.banner('warn', t('edit_hint'));
+    setEditUI(true);
+    let html = currentResult.html;
+    html = /<\/body>/i.test(html) ? html.replace(/<\/body>/i, EDITOR_RUNTIME + '</body>') : html + EDITOR_RUNTIME;
+    U.$('#result-frame').srcdoc = html;
+  }
+
+  function exitEdit(appliedHtml) {
+    editing = false;
+    setEditUI(false);
+    IDG.ui.clearBanners();
+    if (appliedHtml) {
+      currentResult.html = appliedHtml;
+      saveLastResult(currentResult);
+      IDG.ui.toast(t('edit_applied'));
+    }
+    showResult(currentResult.html);
+  }
+
+  function wireEditor() {
+    const frame = U.$('#result-frame');
+    U.$('#btn-edit').addEventListener('click', enterEdit);
+    U.$('#btn-edit-cancel').addEventListener('click', () => { if (editing) exitEdit(null); });
+    U.$('#btn-edit-done').addEventListener('click', () => {
+      if (editing) frame.contentWindow.postMessage({ __idgEdit: 'finish' }, '*');
+    });
+    U.$('#btn-edit-undo').addEventListener('click', () => {
+      if (editing) frame.contentWindow.postMessage({ __idgEdit: 'undo' }, '*');
+    });
+    global.addEventListener('message', (e) => {
+      if (!editing || e.source !== frame.contentWindow) return;
+      const d = e.data || {};
+      if (d.__idgEdit === 'state') U.$('#btn-edit-undo').disabled = !d.undo;
+      else if (d.__idgEdit === 'done' && d.html) exitEdit(d.html);
+      else if (d.__idgEdit === 'error') { IDG.ui.toast('✗ ' + (d.detail || 'edit failed')); exitEdit(null); }
+    });
   }
 
   /* ---------- export (FR-25) ---------- */
@@ -423,6 +540,7 @@
     IDG.ui.wireCommon();
     wireIngestion();
     wireResult();
+    wireEditor();
     IDG.ui.renderPaletteRow();
     IDG.ui.renderEndpoint();
     IDG.ui.statusBar.render();

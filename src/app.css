@@ -200,6 +200,8 @@ main {
 .result-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .result-head .card-title { margin: 0; flex: 1; }
 .result-tools { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+#edit-tools { display: inline-flex; gap: 8px; }
+#edit-tools[hidden] { display: none; }
 .seg { display: inline-flex; border-radius: 9px; overflow: hidden; border: 1px solid var(--line); }
 .seg .btn { border: none; border-radius: 0; }
 .seg .seg-on { background: var(--p); color: #fff; }

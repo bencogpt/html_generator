@@ -72,7 +72,9 @@ const CHARTS_HTML = `<!DOCTYPE html>
 </div>
 <script>
 document.addEventListener('DOMContentLoaded',function(){
-  new Chart(document.getElementById('cPolar'),{type:'polarArea',data:{labels:['א','ב','ג'],datasets:[{data:[11,17,9]}]},options:{responsive:true,maintainAspectRatio:false}});
+  // per the output contract: skip a chart whose canvas is missing (e.g. deleted in edit mode)
+  var elP=document.getElementById('cPolar');
+  if(elP) new Chart(elP,{type:'polarArea',data:{labels:['א','ב','ג'],datasets:[{data:[11,17,9]}]},options:{responsive:true,maintainAspectRatio:false}});
   IDG_CHARTS.heatmap('cHeat',['שורה1','שורה2'],['A','B','C'],[[1,5,9],[7,3,2]],{label:'עוצמה'});
   IDG_CHARTS.choropleth('cMap',{'Israel':40,'United States':25,'Germany':15},{label:'נתח'});
   IDG_CHARTS.bubbleMap('cBub',{'Israel':40,'United States':25,'France':10},{label:'נוכחות'});
@@ -389,6 +391,53 @@ const server = http.createServer((req, res) => {
   assert.ok(!/(?:src|href)=["'](?:https?:)?\/\//.test(chartsSrcdoc), 'map/heatmap artifact has no external refs');
   console.log('✓ expanded charts: polarArea + heatmap + choropleth + bubbleMap render offline (' + chartInfo.countries + ' countries embedded)');
   console.log('✓ flow diagram: stray arrow glyph hidden, single CSS chevron (font-size ' + chartInfo.flow.fontPx + ', chevron ' + chartInfo.flow.afterW + 'px)');
+
+  // in-preview edit mode: delete a chart, delete a whole section, edit a
+  // headline, undo — then Done bakes the changes into the exported report
+  await page.click('#btn-edit');
+  assert.ok(!(await page.$('#edit-tools[hidden]')), 'edit tools shown');
+  let editFrame = page.frames().find((f) => f !== page.mainFrame());
+  await editFrame.waitForSelector('#idg-delbar', { state: 'attached', timeout: 15000 });
+  assert.equal(await editFrame.getAttribute('h2', 'contenteditable'), 'true', 'text is editable in place');
+
+  // delete the polar chart via hover + ✕
+  await editFrame.hover('#cPolar');
+  await editFrame.click('#idg-del-el');
+  assert.ok(!(await editFrame.$('#cPolar')), 'chart removed');
+  // undo restores it…
+  await page.waitForFunction(() => !document.querySelector('#btn-edit-undo').disabled);
+  await page.click('#btn-edit-undo');
+  await editFrame.waitForSelector('#cPolar', { state: 'attached' });
+  // …then delete it again for the final state
+  await editFrame.hover('#cPolar');
+  await editFrame.click('#idg-del-el');
+
+  // delete an entire section via the "✕ section" button
+  await editFrame.locator('h2:has-text("תהליך")').hover();
+  await editFrame.click('#idg-del-sec');
+  assert.ok(!(await editFrame.$('.flow')), 'whole section removed');
+
+  // edit a headline in place
+  await editFrame.evaluate(() => { document.querySelector('h2').textContent = 'EDITED_HEADLINE_XYZ'; });
+
+  await page.click('#btn-edit-done');
+  await page.waitForFunction(() => document.querySelector('#edit-tools').hidden, null, { timeout: 15000 });
+  const editedDoc = await page.getAttribute('#result-frame', 'srcdoc');
+  assert.ok(editedDoc.includes('EDITED_HEADLINE_XYZ'), 'text edit applied');
+  assert.ok(!editedDoc.includes('id="cPolar"'), 'deleted chart gone from final HTML');
+  assert.ok(!/idg-editor-rt|idg-delbar|idg-editor-css|contenteditable/.test(editedDoc), 'no editor artifacts in final HTML');
+  assert.ok(editedDoc.includes('id="cHeat"'), 'other content intact');
+  // remaining charts still render after apply (per-chart guards tolerate the missing canvas)
+  editFrame = page.frames().find((f) => f !== page.mainFrame());
+  await editFrame.waitForFunction(() => window.Chart && window.Chart.getChart('cHeat'), null, { timeout: 15000 });
+  assert.ok(await page.isEnabled('#btn-download'), 'exports re-enabled and now use the edited report');
+  const savedEdited = await page.evaluate(() => new Promise((resolve) => {
+    const rq = indexedDB.open('idg-store', 1);
+    rq.onsuccess = () => { const g = rq.result.transaction('kv').objectStore('kv').get('lastResult'); g.onsuccess = () => resolve(g.result && g.result.html); };
+    rq.onerror = () => resolve(null);
+  }));
+  assert.ok(savedEdited && savedEdited.includes('EDITED_HEADLINE_XYZ'), 'edited report saved as last report');
+  console.log('✓ edit mode: delete chart/section + inline text edit + undo, applied to exports & saved');
 
   // truncation detection: the model hits max tokens (finish_reason 'length')
   // → user-facing warning, run flagged, NO repair round-trip wasted
