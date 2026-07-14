@@ -95,6 +95,43 @@ const asmPy = (args) => run('python3', 'assemble.py', args);
   assert.ok(/external/.test(lintPy), 'python lint warned about the CDN reference');
   console.log('✓ assemble.py parity: identical output + same linting');
 
+  // 6. single-file MD variant: extract the embedded assembler exactly like
+  //    the chatbot would, serve assets over HTTP, assemble, compare bytes.
+  const singleMd = fs.readFileSync(path.join(ROOT, 'infographic-skill-single.md'), 'utf8');
+  const block = singleMd.match(/## Embedded assembler[^\n]*\n\n```python\n([\s\S]*?)```/);
+  assert.ok(block, 'embedded assembler block present in single-file md');
+  assert.ok(!singleMd.includes('__PALETTES_JSON__'), 'palettes baked into embedded assembler');
+  const pyPath = path.join(TMP, 'assemble_infographic.py');
+  fs.writeFileSync(pyPath, block[1]);
+
+  const http = require('http');
+  const assetsDir = path.join(SKILL, 'assets');
+  const server = http.createServer((req, res) => {
+    const f = path.join(assetsDir, path.basename(req.url));
+    if (fs.existsSync(f)) { res.writeHead(200); res.end(fs.readFileSync(f)); }
+    else { res.writeHead(404); res.end(); }
+  });
+  await new Promise((r) => server.listen(0, '127.0.0.1', r));
+  const url = `http://127.0.0.1:${server.address().port}`;
+  const outSingle = path.join(TMP, 'single.html');
+  // async spawn — spawnSync would block the event loop and deadlock the
+  // in-process assets server above
+  const runPy = (args) => new Promise((resolve) => {
+    const c = require('child_process').spawn('python3', args, { cwd: TMP });
+    let err = '';
+    c.stderr.on('data', (d) => (err += d));
+    c.on('close', (code) => resolve({ code, err }));
+  });
+  const rs = await runPy([pyPath, src, '-o', outSingle, '--palette', 'slate-premium', '--assets-url', url]);
+  assert.equal(rs.code, 0, 'single-file assembler ran: ' + rs.err);
+  assert.ok(fs.readFileSync(outSingle, 'utf8') === fs.readFileSync(outDark, 'utf8'),
+    'single-file assembler output byte-identical to the packaged assemblers');
+  server.close();
+  // second run with the server DOWN must succeed from the cache
+  const rs2 = await runPy([pyPath, src, '-o', path.join(TMP, 'single2.html'), '--palette', 'slate-premium', '--assets-url', url]);
+  assert.equal(rs2.code, 0, 'cached run succeeded with assets server down: ' + rs2.err);
+  console.log('✓ single-file md skill: embedded assembler extracted, fetched+cached assets, identical output');
+
   fs.rmSync(TMP, { recursive: true, force: true });
   console.log('\nSKILL PACKAGE: all checks passed');
 })().catch((e) => { console.error('SKILL TEST FAILED:', e.message); process.exit(1); });

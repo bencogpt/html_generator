@@ -72,6 +72,12 @@ function main() {
   if (!re.test(md)) throw new Error('PALETTES markers missing in SKILL.md');
   fs.writeFileSync(mdPath, md.replace(re, `$1${table}$2`));
 
+  /* Single-file variant: for skill platforms that accept ONE markdown file
+     only. Derived from the (palette-injected) SKILL.md so the contract text
+     cannot drift; the assembler is embedded as a code block the model writes
+     to disk and runs, fetching assets once from an internal URL. */
+  buildSingleFileMd(palettes);
+
   /* Zip the package (python3 zipfile — no npm deps). */
   const zipPath = path.join(ROOT, 'infographic-skill.zip');
   execFileSync('python3', ['-c', `
@@ -87,6 +93,83 @@ print('zipped')`, SKILL, zipPath]);
   const size = (p) => (fs.statSync(p).size / 1024).toFixed(0) + ' KB';
   console.log(`skill assets: chart-lib ${size(path.join(SKILL, 'assets/chart-lib.js'))} · base.css ${size(path.join(SKILL, 'assets/base.css'))} · fonts ${size(path.join(SKILL, 'assets/fonts.css'))}`);
   console.log(`✓ ${zipPath} (${size(zipPath)})`);
+}
+
+function buildSingleFileMd(palettes) {
+  let md = fs.readFileSync(path.join(SKILL, 'SKILL.md'), 'utf8');
+
+  // Embedded assembler = assemble-remote.py with the palettes baked in.
+  const py = fs.readFileSync(path.join(SKILL, 'scripts', 'assemble-remote.py'), 'utf8')
+    .replace('__PALETTES_JSON__', JSON.stringify(palettes));
+  if (py.includes('__PALETTES_JSON__')) throw new Error('palette substitution failed');
+  if (/```/.test(py)) throw new Error('assembler contains ``` — would break the md code fence');
+
+  // Frontmatter: describe the single-file mechanics.
+  md = md.replace(
+    /placeholder tokens, then runs scripts\/assemble\.py[\s\S]*?library and stylesheet\./,
+    'placeholder tokens, then writes and runs the embedded python assembler\n' +
+    '  (stdlib only, sandboxed) which fetches the bundled chart library once\n' +
+    '  from an internal assets URL and produces the final self-contained file.');
+
+  // Intro: assets are fetched, not bundled alongside.
+  md = md.replace(
+    /are bundled with this skill and injected by a script — you never write\nthem by hand\./,
+    'are fetched once from an internal assets URL by the embedded assembler\nscript below — you never write them by hand.');
+
+  // Workflow: file-creation + sandbox flow for a one-file skill.
+  md = md.replace(/3\. \*\*Write `report\.html`\*\*[\s\S]*?## OUTPUT CONTRACT/,
+    `3. **Write \`report.html\`** (use the file-creation tool) following the OUTPUT
+   CONTRACT below. Put the two placeholder tokens in \`<head>\` — do NOT try to
+   inline the chart library.
+4. **Write \`assemble_infographic.py\`** (file-creation tool): copy the code
+   block from the "Embedded assembler" section at the end of this skill,
+   VERBATIM and in full.
+5. **Assemble** — run in the python sandbox (fetches the chart bundle once
+   from the internal assets URL, injects stylesheet + font + palette, lints
+   for forbidden external references):
+
+   \`\`\`bash
+   python3 assemble_infographic.py report.html -o infographic.html --palette colorful
+   \`\`\`
+
+   The assets URL is taken from \`--assets-url\` > the \`INFOGRAPHIC_ASSETS_URL\`
+   env var > the \`ASSETS_BASE_URL\` constant at the top of the script (usually
+   pre-set by whoever installed this skill). \`--list-palettes\` works offline.
+
+6. **Deliver \`infographic.html\`.** It is one file, works from \`file://\`,
+   fully offline for its viewers (the only network use ever is the one-time
+   asset fetch by the assembler, which is then cached).
+
+## OUTPUT CONTRACT`);
+
+  // Replace the package-file listing with the embedded assembler + admin
+  // setup. Replacer FUNCTION so `$`-sequences in the python source stay literal.
+  md = md.replace(/## Files in this skill[\s\S]*$/, () =>
+    `## One-time setup (for whoever installs this skill)
+
+Host the three asset files on any internal static web server (nginx, a
+LiteLLM box, a file share with HTTP) under one directory, e.g.
+\`http://tools.internal/infographic-assets/\`:
+
+- \`chart-lib.js\` — Chart.js v4 + heatmap/geo plugins + embedded world atlas
+  + the IDG_CHARTS/IDG_FMT/IDG_NOTICE helpers + tabs runtime (~0.4 MB)
+- \`base.css\` — the output stylesheet
+- \`fonts.css\` — embedded Heebo font (Hebrew+Latin)
+
+(The files ship in the \`assets/\` folder of the full skill package /
+repository.) Then edit the \`ASSETS_BASE_URL\` constant at the top of the
+embedded assembler below to that URL. The assembler downloads them once per
+workspace and caches them in \`./infographic_assets/\`.
+
+## Embedded assembler — write this to \`assemble_infographic.py\` verbatim
+
+\`\`\`python
+${py}\`\`\`
+`);
+
+  const out = path.join(ROOT, 'infographic-skill-single.md');
+  fs.writeFileSync(out, md);
+  console.log(`✓ ${out} (${(fs.statSync(out).size / 1024).toFixed(0)} KB single-file skill)`);
 }
 
 main();

@@ -152,6 +152,14 @@ infographic, minus the UI. `npm run test:skill` assembles the bundled example
 and verifies it renders offline (incl. heatmap + waterfall, dark palette,
 node/python parity).
 
+For platforms that accept **only a single markdown file** as a skill, the
+build also emits `infographic-skill-single.md`: the same contract with the
+assembler embedded as a code block (the model writes it to disk and runs it
+in its python sandbox); assets are fetched once from an internal URL you
+host (`assets/` contents on any static server; direct connection, env
+proxies bypassed) and cached. Verified byte-identical to the packaged
+assemblers.
+
 ## Repository layout
 
 ```
