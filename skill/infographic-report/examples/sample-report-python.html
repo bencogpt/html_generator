@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head><meta charset="UTF-8"><title>סקר שוק</title>
+{{BASE_CSS}}
+</head>
+<body>
+<header class="hero"><span class="icon">📊</span><h1>סקר שוק התוכנה 2026</h1>
+<p class="subtitle">חמש חברות · 12 מיליארד ₪</p></header>
+<div class="container">
+<section class="card"><h2 class="section-title">מדדים</h2>
+<div class="grid-4">
+<div class="kpi"><div class="value">12B ₪</div><div class="label">שוק</div></div>
+<div class="kpi"><div class="value">8%</div><div class="label">צמיחה</div></div>
+<div class="kpi"><div class="value">5</div><div class="label">חברות</div></div>
+<div class="kpi"><div class="value">273K</div><div class="label">מועסקים</div></div>
+</div></section>
+<div class="tabs" data-tab-group="g1">
+<button class="tab-btn" data-tab="t1">תרשימים</button>
+<button class="tab-btn" data-tab="t2">מתקדם</button></div>
+<div class="tab-content active" data-tab-group="g1" data-tab="t1">
+<section class="card"><h2 class="section-title">התפלגות</h2>
+<div class="grid-2">
+<div class="chart-box">{{CHART:c1}}</div>
+<div class="chart-box">{{CHART:c2}}</div>
+</div></section>
+<section class="card"><h2 class="section-title">מגמה</h2>
+<div class="chart-box">{{CHART:c3}}</div></section>
+</div>
+<div class="tab-content" data-tab-group="g1" data-tab="t2">
+<section class="card"><h2 class="section-title">פרופיל</h2>
+<div class="grid-2">
+<div class="chart-box">{{CHART:c4}}</div>
+<div class="chart-box">{{CHART:c5}}</div>
+</div></section>
+<section class="card"><h2 class="section-title">מפת חום ומפל</h2>
+<div class="grid-2">
+<div class="chart-box">{{CHART:c6}}</div>
+<div class="chart-box">{{CHART:c7}}</div>
+</div></section>
+</div>
+<section class="card"><h2 class="section-title">תהליך</h2>
+<div class="flow">
+<div class="flow-step"><span class="step-title">אפיון</span>מיפוי</div>
+<div class="flow-arrow"></div>
+<div class="flow-step"><span class="step-title">פיילוט</span>הרצה</div>
+<div class="flow-arrow"></div>
+<div class="flow-step"><span class="step-title">הטמעה</span>פריסה</div>
+</div></section>
+<footer class="footer">מקור: סקר 2026</footer>
+</div></body></html>

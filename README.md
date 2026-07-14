@@ -153,12 +153,22 @@ and verifies it renders offline (incl. heatmap + waterfall, dark palette,
 node/python parity).
 
 For platforms that accept **only a single markdown file** as a skill, the
-build also emits `infographic-skill-single.md`: the same contract with the
-assembler embedded as a code block (the model writes it to disk and runs it
-in its python sandbox); assets are fetched once from an internal URL you
-host (`assets/` contents on any static server; direct connection, env
-proxies bypassed) and cached. Verified byte-identical to the packaged
-assemblers.
+build emits three self-contained variants (each embeds a stdlib-only python
+assembler as a code block the model writes to disk and runs in its sandbox):
+
+- **`infographic-skill-npm.md`** (recommended) — fully interactive Chart.js
+  output, identical capability to the generator. The assembler pulls pinned
+  chart.js/matrix/geo/topojson/world-atlas packages once from an
+  npm-compatible registry (internal **Artifactory** npm remote — set one
+  constant) and caches them; stylesheet + IDG helper runtime + palettes are
+  embedded in the script. Tested against a mock registry AND the real npm
+  registry (the geo package's `build/` layout differs from `dist/`).
+- **`infographic-skill-single.md`** — interactive Chart.js; assets fetched
+  from a static URL you host yourself (when there is no npm registry).
+- **`infographic-skill-python.md`** — zero-network fallback: charts rendered
+  by the sandbox's **matplotlib** to embedded PNGs (doughnut/bar/stacked/
+  line/radar/scatter/bubble/mixed/heatmap/waterfall, bidi-aware Hebrew,
+  dark palettes; no maps, no hover tooltips).
 
 ## Repository layout
 

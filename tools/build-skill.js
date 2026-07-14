@@ -77,6 +77,8 @@ function main() {
      cannot drift; the assembler is embedded as a code block the model writes
      to disk and runs, fetching assets once from an internal URL. */
   buildSingleFileMd(palettes);
+  buildPythonMd(palettes);
+  buildNpmMd(palettes);
 
   /* Zip the package (python3 zipfile — no npm deps). */
   const zipPath = path.join(ROOT, 'infographic-skill.zip');
@@ -170,6 +172,106 @@ ${py}\`\`\`
   const out = path.join(ROOT, 'infographic-skill-single.md');
   fs.writeFileSync(out, md);
   console.log(`✓ ${out} (${(fs.statSync(out).size / 1024).toFixed(0)} KB single-file skill)`);
+}
+
+/* Python-rendered variant: ONE md file, zero hosting — charts are rendered
+   by the chatbot's python sandbox (matplotlib) and embedded as images. */
+function buildPythonMd(palettes) {
+  const py = fs.readFileSync(path.join(SKILL, 'scripts', 'build-python.py'), 'utf8')
+    .replace('__PALETTES_JSON__', JSON.stringify(palettes));
+  if (py.includes('__PALETTES_JSON__')) throw new Error('palette substitution failed (python md)');
+  if (/```/.test(py)) throw new Error('python builder contains ``` — would break the md code fence');
+
+  const rows = Object.entries(palettes).map(([id, p]) =>
+    `| \`${id}\` | ${p.label}${p.dark ? ' **(dark)**' : ''} | ${p.desc} |`
+  ).join('\n');
+  const table = `| id | Name | Character |\n|---|---|---|\n${rows}`;
+
+  let md = fs.readFileSync(path.join(SKILL, 'SKILL-python.template.md'), 'utf8');
+  md = md.replace('{{PALETTE_TABLE}}', () => table).replace('{{BUILDER_PY}}', () => py);
+  if (/\{\{(PALETTE_TABLE|BUILDER_PY)\}\}/.test(md)) throw new Error('python md tokens left unfilled');
+
+  const out = path.join(ROOT, 'infographic-skill-python.md');
+  fs.writeFileSync(out, md);
+  console.log(`✓ ${out} (${(fs.statSync(out).size / 1024).toFixed(0)} KB python-rendered single-file skill)`);
+}
+
+/* npm/Artifactory variant: ONE md file, fully interactive Chart.js output —
+   the embedded python assembler fetches chart.js + plugins + world atlas
+   from an npm-compatible registry (internal Artifactory) and inlines them,
+   with base.css + the IDG helper runtime embedded in the script itself. */
+function buildNpmMd(palettes) {
+  let py = fs.readFileSync(path.join(SKILL, 'scripts', 'assemble-npm.py'), 'utf8')
+    .replace('__PALETTES_JSON__', () => JSON.stringify(palettes))
+    .replace('__BASE_CSS__', () => read('src/output/base.css'))
+    .replace('__CHART_EXTRAS__', () => read('src/output/chart-extras.js'));
+  if (/__(PALETTES_JSON|BASE_CSS|CHART_EXTRAS)__/.test(py)) throw new Error('npm md substitution failed');
+  if (/```/.test(py)) throw new Error('npm builder contains ``` — would break the md code fence');
+
+  let md = fs.readFileSync(path.join(SKILL, 'SKILL.md'), 'utf8');
+
+  md = md.replace(
+    /placeholder tokens, then runs scripts\/assemble\.py[\s\S]*?library and stylesheet\./,
+    'placeholder tokens, then writes and runs the embedded python assembler\n' +
+    '  (stdlib only, sandboxed) which pulls chart.js + plugins once from your\n' +
+    '  internal npm registry (Artifactory) and produces the final\n' +
+    '  self-contained interactive file.');
+
+  md = md.replace(
+    /are bundled with this skill and injected by a script — you never write\nthem by hand\./,
+    'are pulled once from your internal npm registry (Artifactory) by the\n' +
+    'embedded assembler script below — you never write them by hand.');
+
+  md = md.replace(/3\. \*\*Write `report\.html`\*\*[\s\S]*?## OUTPUT CONTRACT/,
+    `3. **Write \`report.html\`** (use the file-creation tool) following the OUTPUT
+   CONTRACT below. Put the two placeholder tokens in \`<head>\` — do NOT try to
+   inline the chart library.
+4. **Write \`build_infographic.py\`** (file-creation tool): copy the code
+   block from the "Embedded assembler" section at the end of this skill,
+   VERBATIM and in full.
+5. **Assemble** — run in the python sandbox (first run downloads ~0.7 MB of
+   chart libraries from the npm registry and caches them; then injects
+   stylesheet + palette + chart bundle and lints for forbidden external
+   references):
+
+   \`\`\`bash
+   python3 build_infographic.py report.html -o infographic.html --palette colorful
+   \`\`\`
+
+   The registry is taken from \`--registry\` > the \`INFOGRAPHIC_NPM_REGISTRY\`
+   env var > the \`NPM_REGISTRY\` constant at the top of the script (usually
+   pre-set by whoever installed this skill). \`--list-palettes\` works offline.
+   Read any warnings it prints and fix your HTML if needed.
+
+6. **Deliver \`infographic.html\`.** One file, opens from \`file://\`, fully
+   interactive (hover tooltips, tabs, calculators) and fully offline for its
+   viewers — the only network use ever is the assembler's one-time library
+   download from your registry.
+
+## OUTPUT CONTRACT`);
+
+  md = md.replace(/## Files in this skill[\s\S]*$/, () =>
+    `## One-time setup (for whoever installs this skill)
+
+Edit ONE line in the embedded assembler below: set \`NPM_REGISTRY\` to your
+internal npm-compatible registry — for Artifactory that is typically
+\`https://artifactory.<company>/artifactory/api/npm/<npm-remote-or-virtual-repo>\`.
+The assembler pulls pinned versions of \`chart.js\`, \`chartjs-chart-matrix\`,
+\`chartjs-chart-geo\`, \`topojson-client\` and \`world-atlas\` (≈0.7 MB total,
+standard public npm packages every Artifactory npm remote already mirrors),
+caches them in \`./infographic_assets/\`, and never touches the network again.
+The stylesheet, helper runtime (IDG_CHARTS/IDG_FMT/IDG_NOTICE/tabs) and
+palettes are embedded in the script itself.
+
+## Embedded assembler — write this to \`build_infographic.py\` verbatim
+
+\`\`\`python
+${py}\`\`\`
+`);
+
+  const out = path.join(ROOT, 'infographic-skill-npm.md');
+  fs.writeFileSync(out, md);
+  console.log(`✓ ${out} (${(fs.statSync(out).size / 1024).toFixed(0)} KB npm/Artifactory single-file skill)`);
 }
 
 main();

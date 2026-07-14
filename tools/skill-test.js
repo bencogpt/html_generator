@@ -132,6 +132,99 @@ const asmPy = (args) => run('python3', 'assemble.py', args);
   assert.equal(rs2.code, 0, 'cached run succeeded with assets server down: ' + rs2.err);
   console.log('✓ single-file md skill: embedded assembler extracted, fetched+cached assets, identical output');
 
+  // 6b. matplotlib (python-rendered) variant — runs only where matplotlib
+  //     is installed; the images-based fallback for registry-less setups.
+  const hasMpl = require('child_process').spawnSync('python3', ['-c', 'import matplotlib'], { encoding: 'utf8' }).status === 0;
+  if (hasMpl) {
+    const mplMd = fs.readFileSync(path.join(ROOT, 'infographic-skill-python.md'), 'utf8');
+    const mplBlock = mplMd.match(/## Embedded builder[^\n]*\n\n```python\n([\s\S]*?)```/);
+    assert.ok(mplBlock, 'embedded builder block present in python md');
+    const mplPy = path.join(TMP, 'mpl_builder.py');
+    fs.writeFileSync(mplPy, mplBlock[1]);
+    const outMpl = path.join(TMP, 'mpl-final.html');
+    const rm = await runPy([mplPy, path.join(SKILL, 'examples/sample-report-python.html'),
+      path.join(SKILL, 'examples/sample-charts.json'), '-o', outMpl, '--palette', 'colorful']);
+    assert.equal(rm.code, 0, 'matplotlib builder ran: ' + rm.err);
+    const mplHtml = fs.readFileSync(outMpl, 'utf8');
+    assert.equal((mplHtml.match(/data:image\/png;base64,/g) || []).length, 7, 'all 7 charts rendered to images');
+    assert.ok(!mplHtml.includes('{{'), 'no leftover tokens (mpl)');
+    console.log('✓ matplotlib md skill: 7 charts rendered to embedded images');
+  } else {
+    console.log('⚠ matplotlib not installed — skipped the python-rendered variant check');
+  }
+
+  // 7. npm/Artifactory single-file variant: extract the embedded assembler,
+  //    serve a mock npm registry (tarballs built from our vendored files),
+  //    assemble, and verify the interactive Chart.js report renders offline.
+  const npmMd = fs.readFileSync(path.join(ROOT, 'infographic-skill-npm.md'), 'utf8');
+  const npmBlock = npmMd.match(/## Embedded assembler[^\n]*\n\n```python\n([\s\S]*?)```/);
+  assert.ok(npmBlock, 'embedded assembler block present in npm md');
+  const npmPy = path.join(TMP, 'build_infographic.py');
+  fs.writeFileSync(npmPy, npmBlock[1]);
+
+  // build tgz fixtures with python (stdlib tarfile): package/<path> layout
+  const PKG_FILES = {
+    'chart.js@4.4.0': ['dist/chart.umd.min.js', 'vendor/chart.umd.min.js'],
+    'chartjs-chart-matrix@2.0.1': ['dist/chartjs-chart-matrix.min.js', 'vendor/chartjs-chart-matrix.min.js'],
+    'topojson-client@3.1.0': ['dist/topojson-client.min.js', 'vendor/topojson-client.min.js'],
+    'chartjs-chart-geo@4.3.4': ['dist/chartjs-chart-geo.umd.min.js', 'vendor/chartjs-chart-geo.umd.min.js'],
+    'world-atlas@2.0.2': ['countries-110m.json', 'vendor/world-countries-110m.json'],
+  };
+  const tgzDir = path.join(TMP, 'tgz');
+  fs.mkdirSync(tgzDir, { recursive: true });
+  const mkTgz = require('child_process').spawnSync('python3', ['-c', `
+import tarfile, io, json, sys, os
+spec = json.loads(sys.argv[1]); root = sys.argv[2]; out = sys.argv[3]
+for pkgv, (inner, srcrel) in spec.items():
+    name, ver = pkgv.rsplit('@', 1)
+    with tarfile.open(os.path.join(out, f'{name}-{ver}.tgz'), 'w:gz') as tf:
+        data = open(os.path.join(root, srcrel), 'rb').read()
+        info = tarfile.TarInfo('package/' + inner); info.size = len(data)
+        tf.addfile(info, io.BytesIO(data))
+print('ok')`, JSON.stringify(PKG_FILES), ROOT, tgzDir], { encoding: 'utf8' });
+  assert.ok(/ok/.test(mkTgz.stdout), 'tgz fixtures built: ' + mkTgz.stderr);
+
+  const reg = http.createServer((req, res) => {
+    const m = req.url.match(/^\/([^/]+)\/([\d.]+)$/);           // metadata route
+    const t = req.url.match(/\/-\/([^/]+\.tgz)$/);               // tarball route
+    if (m) {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({ dist: { tarball: `http://127.0.0.1:${reg.address().port}/${m[1]}/-/${decodeURIComponent(m[1])}-${m[2]}.tgz` } }));
+    }
+    if (t) {
+      const f = path.join(tgzDir, decodeURIComponent(t[1]));
+      if (fs.existsSync(f)) { res.writeHead(200); return res.end(fs.readFileSync(f)); }
+    }
+    res.writeHead(404); res.end();
+  });
+  await new Promise((r) => reg.listen(0, '127.0.0.1', r));
+  const regUrl = `http://127.0.0.1:${reg.address().port}`;
+
+  const outNpm = path.join(TMP, 'npm-final.html');
+  const rn = await runPy([npmPy, src, '-o', outNpm, '--palette', 'colorful', '--registry', regUrl]);
+  assert.equal(rn.code, 0, 'npm assembler ran: ' + rn.err);
+  reg.close();
+  const npmHtml = fs.readFileSync(outNpm, 'utf8');
+  assert.ok(npmHtml.includes('IDG_CHARTS'), 'helper runtime embedded');
+  assert.ok(npmHtml.includes('__IDG_WORLD_TOPO__'), 'world atlas embedded');
+  assert.ok(!npmHtml.includes('{{'), 'no leftover tokens');
+  assert.ok(!/(?:src|href)=["'](?:https?:)?\/\//.test(npmHtml), 'no external refs');
+
+  // interactive render check — same assertions as the packaged variant
+  const b2 = await chromium.launch();
+  const p2 = await b2.newPage({ viewport: { width: 1100, height: 900 } });
+  const errs2 = [];
+  p2.on('pageerror', (e) => errs2.push('pageerror: ' + e.message));
+  p2.on('console', (m) => { if (m.type() === 'error') errs2.push('console: ' + m.text()); });
+  p2.on('request', (r) => { if (!r.url().startsWith('file://') && !r.url().startsWith('data:')) errs2.push('network: ' + r.url()); });
+  await p2.goto('file://' + outNpm);
+  await p2.waitForFunction(() =>
+    window.Chart && window.Chart.getChart('cShare') && window.Chart.getChart('cMatrix') &&
+    window.Chart.getChart('cWaterfall'), null, { timeout: 20000 });
+  assert.equal(errs2.length, 0, 'npm variant renders clean: ' + errs2.join(' ;; '));
+  await b2.close();
+  console.log('✓ npm/Artifactory md skill: assembler fetched from mock registry, interactive Chart.js report renders offline');
+
   fs.rmSync(TMP, { recursive: true, force: true });
   console.log('\nSKILL PACKAGE: all checks passed');
 })().catch((e) => { console.error('SKILL TEST FAILED:', e.message); process.exit(1); });
