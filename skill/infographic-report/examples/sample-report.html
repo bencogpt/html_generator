@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>סקר שוק התוכנה בישראל 2026</title>
+{{BASE_CSS}}
+{{CHART_LIB}}
+</head>
+<body>
+<header class="hero">
+  <span class="icon">📊</span>
+  <h1>סקר שוק התוכנה בישראל 2026</h1>
+  <p class="subtitle">חמש חברות מובילות · שוק של 12 מיליארד ש״ח · צמיחה שנתית 8%</p>
+</header>
+
+<div class="container">
+
+<section class="card">
+  <h2 class="section-title">מדדים מרכזיים</h2>
+  <div class="grid-4">
+    <div class="kpi"><div class="value">12 מיליארד ₪</div><div class="label">גודל השוק</div></div>
+    <div class="kpi"><div class="value">8%</div><div class="label">צמיחה שנתית</div></div>
+    <div class="kpi"><div class="value">5</div><div class="label">חברות מובילות</div></div>
+    <div class="kpi"><div class="value">273K</div><div class="label">מועסקים</div></div>
+  </div>
+</section>
+
+<section class="card">
+  <h2 class="section-title">נתחי שוק והרכב הכנסות</h2>
+  <div class="grid-2">
+    <div class="chart-box"><canvas id="cShare"></canvas></div>
+    <div class="chart-box"><canvas id="cRevenue"></canvas></div>
+  </div>
+</section>
+
+<section class="card">
+  <h2 class="section-title">בשלות יכולות לפי תחום</h2>
+  <div class="chart-box tall"><canvas id="cMatrix"></canvas></div>
+</section>
+
+<section class="card">
+  <h2 class="section-title">פירוק מחיר רישיון ממוצע</h2>
+  <div class="chart-box"><canvas id="cWaterfall"></canvas></div>
+</section>
+
+<section class="card">
+  <h2 class="section-title">החברות המובילות</h2>
+  <div class="grid-3">
+    <div class="entity-card"><h3>אלפא מערכות</h3><p>מובילת השוק בתחום הארגוני.</p>
+      <ul><li>נתח שוק 34%</li><li>התמחות בבנקאות</li></ul></div>
+    <div class="entity-card alt"><h3>בטא תוכנה</h3><p>הצומחת המהירה בסקר.</p>
+      <ul><li>צמיחה 22% בשנה</li><li>מוצר SaaS מלא</li></ul></div>
+    <div class="entity-card"><h3>גמא דיגיטל</h3><p>שחקנית הביניים הוותיקה.</p>
+      <ul><li>נתח שוק 18%</li><li>פריסה ממשלתית רחבה</li></ul></div>
+  </div>
+</section>
+
+<section class="card">
+  <h2 class="section-title">תהליך ההטמעה האופייני</h2>
+  <div class="flow">
+    <div class="flow-step"><span class="step-title">אפיון</span>מיפוי צרכים</div>
+    <div class="flow-arrow"></div>
+    <div class="flow-step"><span class="step-title">פיילוט</span>הרצה מצומצמת</div>
+    <div class="flow-arrow"></div>
+    <div class="flow-step"><span class="step-title">הטמעה</span>פריסה מלאה</div>
+  </div>
+</section>
+
+<div class="callout"><div class="ct">שורה תחתונה</div>
+  <p>השוק צומח בקצב יציב של 8% בשנה, כאשר שלוש החברות הגדולות מחזיקות יחד 73% ממנו.</p>
+</div>
+
+<footer class="footer">מקור: סקר שוק התוכנה 2026 · הופק אוטומטית</footer>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  var S = ['#4F46E5', '#F43F5E', '#F59E0B', '#10B981', '#0EA5E9', '#A855F7'];
+  var RTL = { legend: { rtl: true, textDirection: 'rtl' }, tooltip: { rtl: true, textDirection: 'rtl' } };
+
+  try {
+    var el = document.getElementById('cShare');
+    if (el) new Chart(el, {
+      type: 'doughnut',
+      data: { labels: ['אלפא', 'בטא', 'גמא', 'אחרים'], datasets: [{ data: [34, 21, 18, 27], backgroundColor: S }] },
+      options: { responsive: true, maintainAspectRatio: false,
+        plugins: { legend: Object.assign({ position: 'bottom' }, RTL.legend), tooltip: RTL.tooltip,
+          title: { display: true, text: 'נתחי שוק (%)' } } }
+    });
+  } catch (e) {}
+
+  try {
+    var el2 = document.getElementById('cRevenue');
+    if (el2) new Chart(el2, {
+      type: 'bar',
+      data: { labels: ['אלפא', 'בטא', 'גמא'], datasets: [
+        { label: 'רישיונות', data: [2.1, 1.2, 0.9], backgroundColor: S[0] },
+        { label: 'שירותים', data: [1.4, 0.6, 0.8], backgroundColor: S[1] }] },
+      options: { responsive: true, maintainAspectRatio: false,
+        scales: { x: { stacked: true }, y: { stacked: true } },
+        plugins: { legend: Object.assign({ position: 'bottom' }, RTL.legend), tooltip: RTL.tooltip,
+          title: { display: true, text: 'הרכב הכנסות (מיליארדי ₪)' } } }
+    });
+  } catch (e) {}
+
+  try {
+    if (document.getElementById('cMatrix')) {
+      IDG_CHARTS.heatmap('cMatrix',
+        ['אלפא', 'בטא', 'גמא'],
+        ['ענן', 'אבטחה', 'בינה מלאכותית', 'מובייל'],
+        [[5, 4, 3, 4], [4, 3, 5, 5], [3, 5, 2, 3]],
+        { label: 'בשלות (1–5)' });
+    }
+  } catch (e) {}
+
+  try {
+    if (document.getElementById('cWaterfall')) {
+      IDG_CHARTS.waterfall('cWaterfall', [
+        { label: 'פיתוח', value: 45 },
+        { label: 'שיווק', value: 25 },
+        { label: 'תמיכה', value: 18 },
+        { label: 'רווח', value: 12 },
+        { label: 'סה״כ', value: 100, total: true }
+      ], { label: 'הרכב מחיר', prefix: '' });
+    }
+  } catch (e) {}
+});
+</script>
+</body>
+</html>

@@ -137,6 +137,21 @@ History (200 runs, FIFO) lives in `localStorage`; export as CSV/JSON.
 ⚠️ API keys are stored unencrypted in `localStorage` **only if** you check
 "Persist key"; the default keeps keys in memory for the session only.
 
+## Chatbot skill package (no UI)
+
+The generator's "brain" is also packaged as a standalone **skill** for
+LLM chatbots with a skills architecture (file creation + sandboxed
+python/node): `skill/infographic-report/` — built by `npm run build:skill`
+into `infographic-skill.zip`. The chatbot reads `SKILL.md` (the full output
+contract: structure, 17 chart types, tabs/scroll layouts, 8 palettes, RTL),
+writes the report HTML with `{{BASE_CSS}}`/`{{CHART_LIB}}` tokens, then runs
+`scripts/assemble.py` (stdlib-only; `assemble.js` is the node twin) to inject
+the bundled Chart.js + plugins + world atlas + stylesheet + Heebo font and
+lint external references — producing the same self-contained offline
+infographic, minus the UI. `npm run test:skill` assembles the bundled example
+and verifies it renders offline (incl. heatmap + waterfall, dark palette,
+node/python parity).
+
 ## Repository layout
 
 ```
